@@ -12,6 +12,8 @@
   let activeFilter = 'all';
   let discoveryInFlight = false;
   let lastDiscoveryKey = '';
+  let inventorySearchQuery = '';
+  let suggestionsSearchQuery = '';
 
   // ── Storage adapter: Firebase when configured, localStorage fallback ─
   const Store = (function () {
@@ -91,6 +93,16 @@
         } else {
           const all = lsGet('rail_bottles');
           if (all[id]) all[id].name = name;
+          lsSet('rail_bottles', all);
+          bottleCb && bottleCb(all);
+        }
+      },
+      updateBottleOrigin(id, origin) {
+        if (useFirebase) {
+          window.railDB.ref('bar-inventory/bottles/' + id + '/origin').set(origin);
+        } else {
+          const all = lsGet('rail_bottles');
+          if (all[id]) all[id].origin = origin;
           lsSet('rail_bottles', all);
           bottleCb && bottleCb(all);
         }
@@ -306,21 +318,28 @@
   // dedicated Wine List (Wine + Champagne/Sparkling categories), and a
   // Restricted list (any category, flagged via the lock toggle) that's
   // excluded from cocktail matching. A bottle appears in exactly one.
+  function matchesInventorySearch(b) {
+    if (!inventorySearchQuery) return true;
+    const q = inventorySearchQuery;
+    return R.normalize(b.name).includes(q) || (b.origin && R.normalize(b.origin).includes(q));
+  }
+
   function renderInventory() {
+    const searching = !!inventorySearchQuery;
     renderBottleGroup(
       'bottle-groups',
-      (b) => !b.restricted && !R.WINE_CATEGORIES.includes(b.category),
-      'No bottles yet — add your first one above.'
+      (b) => !b.restricted && !R.WINE_CATEGORIES.includes(b.category) && matchesInventorySearch(b),
+      searching ? 'No bottles match your search.' : 'No bottles yet — add your first one above.'
     );
     renderBottleGroup(
       'wine-groups',
-      (b) => !b.restricted && R.WINE_CATEGORIES.includes(b.category),
-      'No wine or sparkling bottles yet.'
+      (b) => !b.restricted && R.WINE_CATEGORIES.includes(b.category) && matchesInventorySearch(b),
+      searching ? 'No wine or sparkling bottles match your search.' : 'No wine or sparkling bottles yet.'
     );
     renderBottleGroup(
       'restricted-groups',
-      (b) => !!b.restricted,
-      'No restricted bottles — tap 🔓 on any bottle to keep it out of suggestions.'
+      (b) => !!b.restricted && matchesInventorySearch(b),
+      searching ? 'No restricted bottles match your search.' : 'No restricted bottles — tap 🔓 on any bottle to keep it out of suggestions.'
     );
   }
 
@@ -371,6 +390,11 @@
     nameWrap.className = 'bottle-name-wrap';
     renderNameDisplay(nameWrap, bottle);
     nameRow.appendChild(nameWrap);
+
+    // ── Origin row: display origin (or "+ Add origin") + edit toggle ──
+    const originRow = document.createElement('div');
+    originRow.className = 'bottle-origin-row';
+    renderOriginDisplay(originRow, bottle);
 
     // ── Controls row: quantity, level, lock, remove ──
     const controlsRow = document.createElement('div');
@@ -450,6 +474,7 @@
     controlsRow.appendChild(actions);
 
     li.appendChild(nameRow);
+    li.appendChild(originRow);
     li.appendChild(controlsRow);
     return li;
   }
@@ -508,6 +533,73 @@
     input.addEventListener('blur', commit);
 
     nameWrap.appendChild(input);
+    input.focus();
+    input.select();
+  }
+
+  // Same display/edit pattern as the name, but origin is optional: shows
+  // a muted "+ Add origin" prompt when empty instead of a blank line.
+  function renderOriginDisplay(originWrap, bottle) {
+    originWrap.innerHTML = '';
+
+    if (bottle.origin) {
+      const origin = document.createElement('span');
+      origin.className = 'bottle-origin';
+      origin.textContent = '🌍 ' + bottle.origin;
+
+      const editBtn = document.createElement('button');
+      editBtn.type = 'button';
+      editBtn.className = 'icon-btn edit-btn';
+      editBtn.setAttribute('aria-label', 'Edit origin for ' + bottle.name);
+      editBtn.textContent = '✎';
+      editBtn.addEventListener('click', () => renderOriginEditor(originWrap, bottle));
+
+      originWrap.appendChild(origin);
+      originWrap.appendChild(editBtn);
+    } else {
+      const addBtn = document.createElement('button');
+      addBtn.type = 'button';
+      addBtn.className = 'add-origin-btn';
+      addBtn.textContent = '+ Add origin';
+      addBtn.addEventListener('click', () => renderOriginEditor(originWrap, bottle));
+      originWrap.appendChild(addBtn);
+    }
+  }
+
+  function renderOriginEditor(originWrap, bottle) {
+    originWrap.innerHTML = '';
+
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'bottle-origin-input';
+    input.placeholder = 'e.g. Kentucky, USA';
+    input.value = bottle.origin || '';
+    input.setAttribute('aria-label', 'Edit origin for ' + bottle.name);
+
+    let settled = false;
+    function commit() {
+      if (settled) return;
+      settled = true;
+      const newOrigin = input.value.trim();
+      if (newOrigin !== (bottle.origin || '')) {
+        Store.updateBottleOrigin(bottle.id, newOrigin);
+      } else {
+        renderOriginDisplay(originWrap, bottle);
+      }
+    }
+    function cancel() {
+      if (settled) return;
+      settled = true;
+      renderOriginDisplay(originWrap, bottle);
+    }
+
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); commit(); }
+      if (e.key === 'Escape') { e.preventDefault(); cancel(); }
+    });
+    input.addEventListener('blur', commit);
+
+    originWrap.appendChild(input);
     input.focus();
     input.select();
   }
@@ -579,9 +671,11 @@
 
     if (activeFilter === 'ready') all = all.filter((r) => r.ready);
     if (activeFilter === 'one-away') all = all.filter((r) => !r.ready && r.missing === 1);
+    if (suggestionsSearchQuery) all = all.filter((r) => R.normalize(r.name).includes(suggestionsSearchQuery));
 
     if (all.length === 0) {
-      container.innerHTML = '<p class="empty-state">No matches yet — add some bottles to see suggestions.</p>';
+      const msg = suggestionsSearchQuery ? 'No cocktails match your search.' : 'No matches yet — add some bottles to see suggestions.';
+      container.innerHTML = '<p class="empty-state">' + esc(msg) + '</p>';
       return;
     }
 
@@ -744,10 +838,13 @@
       e.preventDefault();
       const nameInput = document.getElementById('bottle-name');
       const categorySelect = document.getElementById('bottle-category');
+      const originInput = document.getElementById('bottle-origin');
       const name = nameInput.value.trim();
+      const origin = originInput.value.trim();
       if (!name) return;
-      Store.addBottle({ name, category: categorySelect.value, level: 'full', quantity: 1 });
+      Store.addBottle({ name, category: categorySelect.value, level: 'full', quantity: 1, origin });
       nameInput.value = '';
+      originInput.value = '';
       nameInput.focus();
     });
 
@@ -794,6 +891,15 @@
     document.querySelectorAll('.filter-btn').forEach((btn) =>
       btn.addEventListener('click', () => switchFilter(btn.dataset.filter))
     );
+
+    document.getElementById('inventory-search').addEventListener('input', (e) => {
+      inventorySearchQuery = R.normalize(e.target.value);
+      renderInventory();
+    });
+    document.getElementById('suggestions-search').addEventListener('input', (e) => {
+      suggestionsSearchQuery = R.normalize(e.target.value);
+      renderSuggestions();
+    });
   }
 
   // ── Boot ────────────────────────────────────────────────────────────

@@ -170,6 +170,22 @@ body {
   border-color: var(--brass);
 }
 
+.search-input {
+  display: block;
+  width: 100%;
+  background: var(--walnut-800);
+  border: 1px solid var(--walnut-600);
+  color: var(--cream);
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  padding: 0.6rem 0.75rem;
+  border-radius: 4px;
+  margin-bottom: 1rem;
+}
+.search-input:focus { outline: none; border-color: var(--brass); }
+.search-input::placeholder { color: var(--cream-dim); }
+.search-input::-webkit-search-cancel-button { cursor: pointer; }
+
 .btn-primary,
 .btn-secondary {
   font-family: var(--font-mono);
@@ -259,6 +275,43 @@ body {
   min-width: 0;
 }
 .bottle-name-input:focus { outline: none; }
+
+.bottle-origin-row {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.bottle-origin {
+  font-size: 0.72rem;
+  color: var(--cream-dim);
+  overflow-wrap: break-word;
+}
+
+.add-origin-btn {
+  background: none;
+  border: none;
+  color: #7a7166;
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-style: italic;
+  padding: 0;
+}
+.add-origin-btn:hover { color: var(--brass); }
+
+.bottle-origin-input {
+  flex: 1;
+  background: var(--walnut-900);
+  border: 1px solid var(--brass);
+  color: var(--cream);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  padding: 0.25rem 0.45rem;
+  border-radius: 4px;
+  min-width: 0;
+}
+.bottle-origin-input:focus { outline: none; }
 
 .bottle-controls-row {
   display: flex;

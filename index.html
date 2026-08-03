@@ -37,9 +37,12 @@
       <form id="add-bottle-form" class="add-form">
         <input id="bottle-name" type="text" placeholder="e.g. Buffalo Trace Bourbon" autocomplete="off" required>
         <select id="bottle-category" required></select>
+        <input id="bottle-origin" type="text" placeholder="Origin (optional, e.g. Kentucky, USA)" autocomplete="off">
         <button type="submit" class="btn-primary">Add</button>
       </form>
     </section>
+
+    <input id="inventory-search" type="search" class="search-input" placeholder="Search your bottles…" autocomplete="off">
 
     <section class="panel-block">
       <h2 class="panel-heading">Bar Shelf</h2>
@@ -79,6 +82,8 @@
         <button type="submit" class="btn-primary">Add Recipe</button>
       </form>
     </details>
+
+    <input id="suggestions-search" type="search" class="search-input" placeholder="Search cocktails…" autocomplete="off">
 
     <div class="filter-bar">
       <button class="filter-btn active" data-filter="all" type="button">All</button>
