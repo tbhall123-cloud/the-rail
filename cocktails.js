@@ -39,6 +39,7 @@
     { id: 'cream',             name: 'Cream' },
     { id: 'prosecco',          name: 'Prosecco' },
     { id: 'espresso',          name: 'Espresso' },
+    { id: 'grenadine',         name: 'Grenadine' },
   ];
 
   // ── Curated "house" recipes ────────────────────────────────────────
@@ -69,6 +70,10 @@
     { name: 'Bellini',         required: ['Champagne/Sparkling'], optional: ['peach puree'] },
     { name: 'Sangria',         required: ['Wine'], optional: ['orange-juice', 'orange', 'lemon'] },
     { name: 'Wine Spritzer',   required: ['Wine'], optional: ['soda-water'] },
+    { name: 'Tequila Sunrise', required: ['Tequila/Mezcal'], optional: ['orange-juice', 'grenadine'] },
+    { name: 'Jack Rose',       required: ['Brandy/Cognac'], optional: ['lime', 'grenadine'] },
+    { name: 'Bacardi Cocktail',required: ['Rum'], optional: ['lime', 'grenadine'] },
+    { name: 'Ward Eight',      required: ['Whiskey'], optional: ['lemon', 'orange-juice', 'grenadine'] },
   ];
 
   // ── CocktailDB representative search terms per category ───────────
@@ -152,6 +157,7 @@
     'cream':            ['cream', 'heavy cream', 'half and half', 'milk', 'whipped cream'],
     'prosecco':         ['prosecco'],
     'espresso':         ['espresso', 'coffee'],
+    'grenadine':        ['grenadine'],
   };
 
   function normalize(s) {
