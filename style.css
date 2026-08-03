@@ -136,6 +136,13 @@ body {
   padding: 0.5rem 0;
 }
 
+.panel-note {
+  color: var(--cream-dim);
+  font-size: 0.76rem;
+  margin: -0.3rem 0 0.6rem;
+  line-height: 1.4;
+}
+
 /* ── Forms ──────────────────────────────────────────────────────── */
 
 .add-form {
@@ -254,6 +261,9 @@ body {
   line-height: 1;
 }
 .icon-btn:hover { color: var(--red); }
+
+.lock-btn:hover { color: var(--brass-bright); }
+.lock-btn.active { color: var(--brass-bright); }
 
 /* ── Mixer chips ────────────────────────────────────────────────── */
 

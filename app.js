@@ -71,6 +71,16 @@
           bottleCb && bottleCb(all);
         }
       },
+      setBottleRestricted(id, restricted) {
+        if (useFirebase) {
+          window.railDB.ref('bar-inventory/bottles/' + id + '/restricted').set(restricted);
+        } else {
+          const all = lsGet('rail_bottles');
+          if (all[id]) all[id].restricted = restricted;
+          lsSet('rail_bottles', all);
+          bottleCb && bottleCb(all);
+        }
+      },
       setMixer(id, data) {
         if (useFirebase) {
           window.railDB.ref('bar-inventory/mixers/' + id).update(data);
@@ -212,14 +222,36 @@
   }
 
   // ── Rendering: Inventory tab ───────────────────────────────────────
+  // Bottles are split into three sections: the general Bar Shelf, a
+  // dedicated Wine List (Wine + Champagne/Sparkling categories), and a
+  // Restricted list (any category, flagged via the lock toggle) that's
+  // excluded from cocktail matching. A bottle appears in exactly one.
   function renderInventory() {
-    const container = document.getElementById('bottle-groups');
+    renderBottleGroup(
+      'bottle-groups',
+      (b) => !b.restricted && !R.WINE_CATEGORIES.includes(b.category),
+      'No bottles yet — add your first one above.'
+    );
+    renderBottleGroup(
+      'wine-groups',
+      (b) => !b.restricted && R.WINE_CATEGORIES.includes(b.category),
+      'No wine or sparkling bottles yet.'
+    );
+    renderBottleGroup(
+      'restricted-groups',
+      (b) => !!b.restricted,
+      'No restricted bottles — tap 🔓 on any bottle to keep it out of suggestions.'
+    );
+  }
+
+  function renderBottleGroup(containerId, predicate, emptyMessage) {
+    const container = document.getElementById(containerId);
     container.innerHTML = '';
 
     const grouped = {};
     R.CATEGORIES.forEach((c) => (grouped[c.id] = []));
     Object.entries(bottlesState).forEach(([id, b]) => {
-      if (!b) return;
+      if (!b || !predicate(b)) return;
       (grouped[b.category] || grouped.Other).push(Object.assign({ id }, b));
     });
 
@@ -243,7 +275,7 @@
     });
 
     if (!anyBottles) {
-      container.innerHTML = '<p class="empty-state">No bottles yet — add your first one above.</p>';
+      container.innerHTML = '<p class="empty-state">' + esc(emptyMessage) + '</p>';
     }
   }
 
@@ -266,6 +298,18 @@
       Store.updateBottleLevel(bottle.id, next);
     });
 
+    const lockBtn = document.createElement('button');
+    lockBtn.className = 'icon-btn lock-btn' + (bottle.restricted ? ' active' : '');
+    lockBtn.type = 'button';
+    lockBtn.setAttribute('aria-label', (bottle.restricted ? 'Unrestrict ' : 'Restrict ') + bottle.name);
+    lockBtn.title = bottle.restricted
+      ? 'Restricted — excluded from suggestions. Tap to allow again.'
+      : 'Tap to restrict from cocktail suggestions.';
+    lockBtn.textContent = bottle.restricted ? '🔒' : '🔓';
+    lockBtn.addEventListener('click', () => {
+      Store.setBottleRestricted(bottle.id, !bottle.restricted);
+    });
+
     const removeBtn = document.createElement('button');
     removeBtn.className = 'icon-btn remove-btn';
     removeBtn.type = 'button';
@@ -279,6 +323,7 @@
 
     li.appendChild(name);
     li.appendChild(levelBtn);
+    li.appendChild(lockBtn);
     li.appendChild(removeBtn);
     return li;
   }

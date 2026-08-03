@@ -22,6 +22,10 @@
 
   const LEVELS = ['full', 'low', 'empty'];
 
+  // Categories pulled into their own "Wine List" section on the Inventory
+  // tab instead of the general bar shelf grouping.
+  const WINE_CATEGORIES = ['Wine', 'Champagne/Sparkling'];
+
   const DEFAULT_MIXERS = [
     { id: 'tonic-water',       name: 'Tonic Water' },
     { id: 'soda-water',        name: 'Soda Water' },
@@ -213,9 +217,11 @@
     return false;
   }
 
+  // Restricted bottles (e.g. special-occasion sipping bottles) are tracked
+  // but never count as available stock for cocktail matching.
   function hasCategoryStock(bottlesState, category) {
     return Object.values(bottlesState || {}).some(
-      (b) => b && b.category === category && b.level !== 'empty'
+      (b) => b && b.category === category && b.level !== 'empty' && !b.restricted
     );
   }
 
@@ -280,6 +286,7 @@
   window.Rail = {
     CATEGORIES,
     LEVELS,
+    WINE_CATEGORIES,
     DEFAULT_MIXERS,
     CURATED_RECIPES,
     COCKTAILDB_TERMS,
