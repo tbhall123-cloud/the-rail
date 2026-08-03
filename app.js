@@ -334,6 +334,64 @@
     return R.normalize(b.name).includes(q) || (b.origin && R.normalize(b.origin).includes(q));
   }
 
+  // ── Rendering: Shopping List tab ───────────────────────────────────
+  function renderShoppingList() {
+    const container = document.getElementById('shopping-list');
+    container.innerHTML = '';
+
+    const notFull = Object.entries(bottlesState)
+      .filter(([, b]) => b && b.level !== 'full')
+      .map(([id, b]) => Object.assign({ id }, b));
+
+    const empty = notFull.filter((b) => b.level === 'empty').sort((a, b) => a.name.localeCompare(b.name));
+    const low = notFull.filter((b) => b.level === 'low').sort((a, b) => a.name.localeCompare(b.name));
+
+    if (empty.length === 0 && low.length === 0) {
+      container.innerHTML = '<p class="empty-state">Nothing to restock — your bar is fully stocked!</p>';
+      return;
+    }
+
+    if (empty.length > 0) container.appendChild(renderShoppingGroup('Empty', empty));
+    if (low.length > 0) container.appendChild(renderShoppingGroup('Running Low', low));
+  }
+
+  function renderShoppingGroup(heading, bottles) {
+    const section = document.createElement('section');
+    section.className = 'shopping-group';
+    section.innerHTML = '<h3 class="shopping-heading">' + esc(heading) + '</h3>';
+
+    const list = document.createElement('ul');
+    list.className = 'shopping-list-items';
+    bottles.forEach((b) => list.appendChild(renderShoppingItem(b)));
+    section.appendChild(list);
+    return section;
+  }
+
+  function renderShoppingItem(bottle) {
+    const li = document.createElement('li');
+    li.className = 'shopping-item level-' + bottle.level;
+
+    const catLabel = (R.CATEGORIES.find((c) => c.id === bottle.category) || {}).label || bottle.category;
+    const info = document.createElement('div');
+    info.className = 'shopping-item-info';
+    info.innerHTML =
+      '<span class="shopping-item-name">' + esc(bottle.name) + '</span>' +
+      '<span class="shopping-item-meta">' + esc(catLabel) + (bottle.origin ? ' · ' + esc(bottle.origin) : '') + '</span>';
+
+    const buyBtn = document.createElement('button');
+    buyBtn.type = 'button';
+    buyBtn.className = 'btn-secondary shopping-buy-btn';
+    buyBtn.textContent = 'Bought it';
+    buyBtn.setAttribute('aria-label', 'Mark ' + bottle.name + ' as restocked');
+    buyBtn.addEventListener('click', () => {
+      Store.updateBottleLevel(bottle.id, 'full');
+    });
+
+    li.appendChild(info);
+    li.appendChild(buyBtn);
+    return li;
+  }
+
   function renderInventory() {
     const searching = !!inventorySearchQuery;
     renderBottleGroup(
@@ -851,6 +909,7 @@
       refreshDiscoveredIfNeeded();
     }
     if (tab === 'favorites') renderFavorites();
+    if (tab === 'shopping') renderShoppingList();
   }
 
   function switchFilter(filter) {
@@ -945,6 +1004,7 @@
         refreshDiscoveredIfNeeded();
       }
       if (activeTab === 'favorites') renderFavorites();
+      if (activeTab === 'shopping') renderShoppingList();
     });
     Store.onMixers((mixers) => {
       mixersState = mixers || {};

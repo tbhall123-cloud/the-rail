@@ -225,6 +225,67 @@ body {
   margin: 0 0 0.4rem;
 }
 
+/* ── Shopping List tab ──────────────────────────────────────────── */
+
+.shopping-group { margin-bottom: 1.25rem; }
+
+.shopping-heading {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.05rem;
+  color: var(--brass);
+  margin: 0 0 0.5rem;
+  padding-bottom: 0.3rem;
+  border-bottom: 1px solid var(--walnut-600);
+}
+
+.shopping-list-items {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.shopping-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  background: var(--walnut-800);
+  border: 1px solid var(--walnut-600);
+  border-left: 3px solid var(--amber);
+  border-radius: 4px;
+  padding: 0.6rem 0.75rem;
+}
+
+.shopping-item.level-empty { border-left-color: var(--red); }
+
+.shopping-item-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.shopping-item-name {
+  font-size: 0.88rem;
+  overflow-wrap: break-word;
+}
+
+.shopping-item-meta {
+  font-size: 0.72rem;
+  color: var(--cream-dim);
+}
+
+.shopping-buy-btn {
+  flex-shrink: 0;
+  white-space: nowrap;
+  font-size: 0.76rem;
+  padding: 0.45rem 0.75rem;
+}
+
 .bottle-list {
   list-style: none;
   margin: 0;
