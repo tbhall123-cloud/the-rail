@@ -40,7 +40,15 @@
 
   <section id="tab-inventory" class="tab-panel active">
 
-    <section class="panel-block">
+    <nav class="section-nav" aria-label="Jump to section">
+      <a href="#section-add-bottle" class="section-nav-btn">➕ Add</a>
+      <a href="#section-bar-shelf" class="section-nav-btn">🥃 Bar Shelf</a>
+      <a href="#section-wine-list" class="section-nav-btn">🍷 Wine List</a>
+      <a href="#section-restricted" class="section-nav-btn">🔒 Restricted</a>
+      <a href="#section-mixers" class="section-nav-btn">🧪 Mixers</a>
+    </nav>
+
+    <section id="section-add-bottle" class="panel-block">
       <h2 class="panel-heading">Add a Bottle</h2>
       <form id="add-bottle-form" class="add-form">
         <input id="bottle-name" type="text" placeholder="e.g. Buffalo Trace Bourbon" autocomplete="off" required>
@@ -52,23 +60,23 @@
 
     <input id="inventory-search" type="search" class="search-input" placeholder="Search your bottles…" autocomplete="off">
 
-    <section class="panel-block">
+    <section id="section-bar-shelf" class="panel-block">
       <h2 class="panel-heading">Bar Shelf</h2>
       <div id="bottle-groups"></div>
     </section>
 
-    <section class="panel-block">
+    <section id="section-wine-list" class="panel-block">
       <h2 class="panel-heading">Wine List</h2>
       <div id="wine-groups"></div>
     </section>
 
-    <section class="panel-block">
+    <section id="section-restricted" class="panel-block">
       <h2 class="panel-heading">Restricted Liquor List</h2>
       <p class="panel-note">Tracked here but left out of cocktail suggestions — tap 🔒 on any bottle to restrict or unrestrict it.</p>
       <div id="restricted-groups"></div>
     </section>
 
-    <section class="panel-block">
+    <section id="section-mixers" class="panel-block">
       <h2 class="panel-heading">Mixers &amp; Garnishes</h2>
       <div id="mixer-chips" class="mixer-chips"></div>
       <form id="add-mixer-form" class="add-form add-form--mixer">
