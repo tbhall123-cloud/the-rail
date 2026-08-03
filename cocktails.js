@@ -298,6 +298,20 @@
     return new RegExp('\\b' + escaped + '\\b').test(haystack);
   }
 
+  // Signals that a mixer-classified ingredient is a decorative garnish
+  // rather than something actually mixed into the drink — checked
+  // against both the ingredient name and its measure (CocktailDB often
+  // puts the tell in the measure, e.g. "1 Wedge" or "For rim").
+  const GARNISH_SIGNALS = [
+    'wedge', 'twist', 'peel', 'zest', 'wheel', 'slice', 'sprig', 'garnish',
+    'rim', 'umbrella', 'stick', 'cherry', 'olive', 'cocktail onion', 'straw',
+  ];
+
+  function isGarnish(ingredientText, measureText) {
+    const combined = normalize(String(ingredientText || '') + ' ' + String(measureText || ''));
+    return GARNISH_SIGNALS.some((kw) => combined.includes(kw));
+  }
+
   // Resolve a canonical mixer id from raw ingredient text, if any.
   function resolveMixerId(normalized) {
     for (const [mixerId, synonyms] of Object.entries(MIXER_SYNONYMS)) {
@@ -409,6 +423,12 @@
 
   // Shared by discovered (CocktailDB) and custom (user-entered) recipes.
   // ingredients: array of { ingredient, measure } pairs.
+  // Bottle ingredients are always required. Mixer ingredients are
+  // required too UNLESS they carry a garnish signal (wedge, twist,
+  // cherry, rim, etc.), in which case they're a true garnish and stay
+  // optional — same "required mixer vs. garnish" rule as the house
+  // recipes, applied generically here since discovered/custom recipes
+  // don't have that distinction hand-authored.
   function computeIngredientListStatus(name, ingredients, bottlesState, mixersState, source, instructions) {
     const required = [];
     const optional = [];
@@ -421,10 +441,16 @@
           have: hasCategoryStock(bottlesState, cls.category),
           category: cls.category,
         });
-      } else {
+      } else if (isGarnish(ingredient, measure)) {
         optional.push({
           label,
           have: hasMixer(mixersState, cls.mixerId || ingredient),
+        });
+      } else {
+        required.push({
+          label,
+          have: hasMixer(mixersState, cls.mixerId || ingredient),
+          category: null,
         });
       }
     }
@@ -481,6 +507,7 @@
     COCKTAILDB_TERMS,
     classifyIngredient,
     hasMixer,
+    isGarnish,
     hasCategoryStock,
     computeCuratedStatus,
     computeDiscoveredStatus,
