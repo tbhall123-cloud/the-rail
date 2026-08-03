@@ -454,6 +454,31 @@ body {
 .ingredient-list li.optional.have { color: var(--amber); }
 .ingredient-list li.optional.missing-optional { color: #7a7166; }
 
+.recipe-instructions {
+  margin-top: 0.7rem;
+  padding-top: 0.6rem;
+  border-top: 1px solid var(--walnut-600);
+}
+
+.recipe-instructions summary {
+  font-family: var(--font-mono);
+  font-weight: 600;
+  font-size: 0.76rem;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--brass);
+  cursor: pointer;
+  list-style: none;
+}
+.recipe-instructions summary::-webkit-details-marker { display: none; }
+
+.recipe-instructions p {
+  margin: 0.5rem 0 0;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: var(--cream-dim);
+}
+
 /* ── Responsive ─────────────────────────────────────────────────── */
 
 @media (min-width: 640px) {

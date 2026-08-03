@@ -46,34 +46,62 @@
   // required: category ids that must have a non-empty bottle
   // optional: mixer/garnish names (matched loosely against the mixers list)
   const CURATED_RECIPES = [
-    { name: 'Old Fashioned',   required: ['Whiskey', 'Bitters'], optional: ['simple-syrup', 'orange peel', 'cherry'] },
-    { name: 'Manhattan',       required: ['Whiskey', 'Vermouth/Fortified Wine', 'Bitters'], optional: ['cherry'] },
-    { name: 'Whiskey Sour',    required: ['Whiskey'], optional: ['lemon', 'simple-syrup'] },
-    { name: 'Boulevardier',    required: ['Whiskey', 'Liqueur', 'Vermouth/Fortified Wine'], optional: ['orange peel'] },
-    { name: 'Martini',         required: ['Gin', 'Vermouth/Fortified Wine'], optional: ['olive', 'lemon'] },
-    { name: 'Negroni',         required: ['Gin', 'Liqueur', 'Vermouth/Fortified Wine'], optional: ['orange peel'] },
-    { name: 'Gin & Tonic',     required: ['Gin'], optional: ['tonic-water', 'lime'] },
-    { name: 'Tom Collins',     required: ['Gin'], optional: ['lemon', 'simple-syrup', 'soda-water'] },
-    { name: 'Daiquiri',        required: ['Rum'], optional: ['lime', 'simple-syrup'] },
-    { name: 'Mojito',          required: ['Rum'], optional: ['lime', 'simple-syrup', 'soda-water', 'mint'] },
-    { name: "Dark 'n' Stormy", required: ['Rum'], optional: ['ginger-beer', 'lime'] },
-    { name: 'Margarita',       required: ['Tequila/Mezcal', 'Liqueur'], optional: ['lime'] },
-    { name: 'Paloma',          required: ['Tequila/Mezcal'], optional: ['grapefruit-juice', 'lime', 'soda-water'] },
-    { name: 'Vodka Martini',   required: ['Vodka', 'Vermouth/Fortified Wine'], optional: ['olive', 'lemon'] },
-    { name: 'Moscow Mule',     required: ['Vodka'], optional: ['ginger-beer', 'lime'] },
-    { name: 'White Russian',   required: ['Vodka', 'Liqueur'], optional: ['cream'] },
-    { name: 'Sidecar',         required: ['Brandy/Cognac', 'Liqueur'], optional: ['lemon'] },
-    { name: 'Espresso Martini',required: ['Vodka', 'Liqueur'], optional: ['espresso', 'simple-syrup'] },
-    { name: 'Aperol Spritz',   required: ['Liqueur', 'Champagne/Sparkling'], optional: ['soda-water', 'orange'] },
-    { name: 'Mimosa',          required: ['Champagne/Sparkling'], optional: ['orange-juice'] },
-    { name: 'Kir Royale',      required: ['Champagne/Sparkling', 'Liqueur'], optional: [] },
-    { name: 'Bellini',         required: ['Champagne/Sparkling'], optional: ['peach puree'] },
-    { name: 'Sangria',         required: ['Wine'], optional: ['orange-juice', 'orange', 'lemon'] },
-    { name: 'Wine Spritzer',   required: ['Wine'], optional: ['soda-water'] },
-    { name: 'Tequila Sunrise', required: ['Tequila/Mezcal'], optional: ['orange-juice', 'grenadine'] },
-    { name: 'Jack Rose',       required: ['Brandy/Cognac'], optional: ['lime', 'grenadine'] },
-    { name: 'Bacardi Cocktail',required: ['Rum'], optional: ['lime', 'grenadine'] },
-    { name: 'Ward Eight',      required: ['Whiskey'], optional: ['lemon', 'orange-juice', 'grenadine'] },
+    { name: 'Old Fashioned',   required: ['Whiskey', 'Bitters'], optional: ['simple-syrup', 'orange peel', 'cherry'],
+      instructions: 'Stir sugar/simple syrup with bitters and a splash of water in a rocks glass until dissolved. Add whiskey and a large ice cube, stir 20–30 seconds to chill. Express an orange peel over the top and drop it in.' },
+    { name: 'Manhattan',       required: ['Whiskey', 'Vermouth/Fortified Wine', 'Bitters'], optional: ['cherry'],
+      instructions: 'Stir whiskey, sweet vermouth, and bitters with ice in a mixing glass for 20–30 seconds. Strain into a chilled coupe. Garnish with a cherry.' },
+    { name: 'Whiskey Sour',    required: ['Whiskey'], optional: ['lemon', 'simple-syrup'],
+      instructions: 'Shake whiskey, lemon juice, and simple syrup hard with ice for 10–15 seconds. Strain over fresh ice in a rocks glass.' },
+    { name: 'Boulevardier',    required: ['Whiskey', 'Liqueur', 'Vermouth/Fortified Wine'], optional: ['orange peel'],
+      instructions: 'Stir whiskey, Campari, and sweet vermouth with ice for 20–30 seconds. Strain into a rocks glass over ice. Garnish with an orange peel.' },
+    { name: 'Martini',         required: ['Gin', 'Vermouth/Fortified Wine'], optional: ['olive', 'lemon'],
+      instructions: 'Stir gin and dry vermouth with plenty of ice for 20–30 seconds. Strain into a chilled coupe or Martini glass. Garnish with an olive or lemon twist.' },
+    { name: 'Negroni',         required: ['Gin', 'Liqueur', 'Vermouth/Fortified Wine'], optional: ['orange peel'],
+      instructions: 'Stir equal parts gin, Campari, and sweet vermouth with ice for 20–30 seconds. Strain into a rocks glass over fresh ice. Garnish with an orange peel.' },
+    { name: 'Gin & Tonic',     required: ['Gin'], optional: ['tonic-water', 'lime'],
+      instructions: 'Fill a highball glass with ice. Add gin, top with tonic water, and stir gently. Garnish with a lime wedge.' },
+    { name: 'Tom Collins',     required: ['Gin'], optional: ['lemon', 'simple-syrup', 'soda-water'],
+      instructions: 'Shake gin, lemon juice, and simple syrup with ice. Strain into a Collins glass over fresh ice and top with soda water. Stir gently.' },
+    { name: 'Daiquiri',        required: ['Rum'], optional: ['lime', 'simple-syrup'],
+      instructions: 'Shake white rum, lime juice, and simple syrup hard with ice for 10–15 seconds. Strain into a chilled coupe.' },
+    { name: 'Mojito',          required: ['Rum'], optional: ['lime', 'simple-syrup', 'soda-water', 'mint'],
+      instructions: 'Muddle mint leaves with simple syrup and lime juice in a highball glass. Add rum and fill with crushed ice, stir. Top with soda water and garnish with a mint sprig.' },
+    { name: "Dark 'n' Stormy", required: ['Rum'], optional: ['ginger-beer', 'lime'],
+      instructions: 'Fill a highball glass with ice. Add dark rum, top with ginger beer, and stir gently. Garnish with a lime wedge.' },
+    { name: 'Margarita',       required: ['Tequila/Mezcal', 'Liqueur'], optional: ['lime'],
+      instructions: 'Shake tequila, orange liqueur, and lime juice hard with ice. Strain into a salt-rimmed rocks glass over fresh ice (or up in a coupe).' },
+    { name: 'Paloma',          required: ['Tequila/Mezcal'], optional: ['grapefruit-juice', 'lime', 'soda-water'],
+      instructions: 'Fill a highball glass with ice. Add tequila and lime juice, top with grapefruit juice (or grapefruit soda) and a splash of soda water. Stir gently.' },
+    { name: 'Vodka Martini',   required: ['Vodka', 'Vermouth/Fortified Wine'], optional: ['olive', 'lemon'],
+      instructions: 'Stir vodka and dry vermouth with plenty of ice for 20–30 seconds. Strain into a chilled coupe or Martini glass. Garnish with an olive or lemon twist.' },
+    { name: 'Moscow Mule',     required: ['Vodka'], optional: ['ginger-beer', 'lime'],
+      instructions: 'Fill a copper mug or highball glass with ice. Add vodka and lime juice, top with ginger beer, and stir gently. Garnish with a lime wedge.' },
+    { name: 'White Russian',   required: ['Vodka', 'Liqueur'], optional: ['cream'],
+      instructions: 'Fill a rocks glass with ice. Add vodka and coffee liqueur, stir. Float cream on top.' },
+    { name: 'Sidecar',         required: ['Brandy/Cognac', 'Liqueur'], optional: ['lemon'],
+      instructions: 'Shake cognac, orange liqueur, and lemon juice hard with ice. Strain into a chilled, sugar-rimmed coupe.' },
+    { name: 'Espresso Martini',required: ['Vodka', 'Liqueur'], optional: ['espresso', 'simple-syrup'],
+      instructions: 'Shake vodka, coffee liqueur, fresh espresso, and simple syrup hard with ice until well-frothed. Double-strain into a chilled coupe.' },
+    { name: 'Aperol Spritz',   required: ['Liqueur', 'Champagne/Sparkling'], optional: ['soda-water', 'orange'],
+      instructions: 'Fill a wine glass with ice. Add prosecco, then Aperol, then a splash of soda water. Stir gently and garnish with an orange slice.' },
+    { name: 'Mimosa',          required: ['Champagne/Sparkling'], optional: ['orange-juice'],
+      instructions: 'Pour chilled sparkling wine into a champagne flute until half full. Top with chilled orange juice.' },
+    { name: 'Kir Royale',      required: ['Champagne/Sparkling', 'Liqueur'], optional: [],
+      instructions: 'Add a splash of crème de cassis to a champagne flute. Top slowly with chilled champagne.' },
+    { name: 'Bellini',         required: ['Champagne/Sparkling'], optional: ['peach puree'],
+      instructions: 'Pour peach purée into a champagne flute. Top slowly with chilled prosecco and stir gently.' },
+    { name: 'Sangria',         required: ['Wine'], optional: ['orange-juice', 'orange', 'lemon'],
+      instructions: 'Combine red wine, orange juice, and sliced fruit in a pitcher. Refrigerate at least 2 hours (overnight is better) so the fruit macerates. Serve over ice.' },
+    { name: 'Wine Spritzer',   required: ['Wine'], optional: ['soda-water'],
+      instructions: 'Fill a wine glass with ice. Add chilled white wine and top with soda water. Stir gently.' },
+    { name: 'Tequila Sunrise', required: ['Tequila/Mezcal'], optional: ['orange-juice', 'grenadine'],
+      instructions: 'Fill a highball glass with ice. Add tequila and orange juice, stir. Slowly pour grenadine down the inside of the glass so it settles at the bottom before it "rises."' },
+    { name: 'Jack Rose',       required: ['Brandy/Cognac'], optional: ['lime', 'grenadine'],
+      instructions: 'Shake apple brandy, lime juice, and grenadine hard with ice. Strain into a chilled coupe.' },
+    { name: 'Bacardi Cocktail',required: ['Rum'], optional: ['lime', 'grenadine'],
+      instructions: 'Shake white rum, lime juice, and grenadine hard with ice. Strain into a chilled coupe.' },
+    { name: 'Ward Eight',      required: ['Whiskey'], optional: ['lemon', 'orange-juice', 'grenadine'],
+      instructions: 'Shake whiskey, lemon juice, orange juice, and grenadine hard with ice. Strain into a chilled coupe or over fresh ice in a rocks glass.' },
   ];
 
   // ── CocktailDB representative search terms per category ───────────
@@ -250,12 +278,13 @@
       missing,
       required: requiredStatus,
       optional: optionalStatus,
+      instructions: recipe.instructions || '',
     };
   }
 
   // Shared by discovered (CocktailDB) and custom (user-entered) recipes.
   // ingredients: array of { ingredient, measure } pairs.
-  function computeIngredientListStatus(name, ingredients, bottlesState, mixersState, source) {
+  function computeIngredientListStatus(name, ingredients, bottlesState, mixersState, source, instructions) {
     const required = [];
     const optional = [];
     for (const { ingredient, measure } of ingredients) {
@@ -282,22 +311,23 @@
       missing,
       required,
       optional,
+      instructions: instructions || '',
     };
   }
 
   // Compute status for a CocktailDB drink.
-  function computeDiscoveredStatus(drinkName, ingredients, bottlesState, mixersState) {
-    return computeIngredientListStatus(drinkName, ingredients, bottlesState, mixersState, 'discovered');
+  function computeDiscoveredStatus(drinkName, ingredients, bottlesState, mixersState, instructions) {
+    return computeIngredientListStatus(drinkName, ingredients, bottlesState, mixersState, 'discovered', instructions);
   }
 
   // Compute status for a user-entered recipe.
   // rawLines: array of free-text ingredient lines, e.g. "2 oz Bourbon".
-  function computeCustomStatus(recipeName, rawLines, bottlesState, mixersState) {
+  function computeCustomStatus(recipeName, rawLines, bottlesState, mixersState, instructions) {
     const ingredients = (rawLines || [])
       .map((line) => String(line || '').trim())
       .filter(Boolean)
       .map((line) => ({ ingredient: line, measure: '' }));
-    return computeIngredientListStatus(recipeName, ingredients, bottlesState, mixersState, 'custom');
+    return computeIngredientListStatus(recipeName, ingredients, bottlesState, mixersState, 'custom', instructions);
   }
 
   function titleCase(s) {

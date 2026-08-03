@@ -214,7 +214,7 @@
               ingredients.push({ ingredient: ing.trim(), measure: measure ? measure.trim() : '' });
             }
           }
-          return { name: d.strDrink, ingredients, thumb: d.strDrinkThumb };
+          return { name: d.strDrink, ingredients, thumb: d.strDrinkThumb, instructions: d.strInstructions || '' };
         });
         if (detail) discovered.push(detail);
       } catch (e) {
@@ -411,10 +411,13 @@
       R.computeCuratedStatus(r, bottlesState, mixersState)
     );
     const discovered = discoveredRecipes.map((d) =>
-      R.computeDiscoveredStatus(d.name, d.ingredients, bottlesState, mixersState)
+      R.computeDiscoveredStatus(d.name, d.ingredients, bottlesState, mixersState, d.instructions)
     );
     const custom = Object.entries(customRecipesState).map(([id, r]) =>
-      Object.assign(R.computeCustomStatus(r.name, r.ingredients, bottlesState, mixersState), { id })
+      Object.assign(
+        R.computeCustomStatus(r.name, r.ingredients, bottlesState, mixersState, r.instructions),
+        { id }
+      )
     );
 
     let all = curated.concat(discovered, custom);
@@ -479,6 +482,19 @@
 
     card.appendChild(header);
     card.appendChild(list);
+
+    if (r.instructions) {
+      const details = document.createElement('details');
+      details.className = 'recipe-instructions';
+      const summary = document.createElement('summary');
+      summary.textContent = 'How to make it';
+      const steps = document.createElement('p');
+      steps.textContent = r.instructions;
+      details.appendChild(summary);
+      details.appendChild(steps);
+      card.appendChild(details);
+    }
+
     return card;
   }
 
@@ -550,12 +566,15 @@
       e.preventDefault();
       const nameInput = document.getElementById('recipe-name');
       const ingredientsInput = document.getElementById('recipe-ingredients');
+      const instructionsInput = document.getElementById('recipe-instructions');
       const name = nameInput.value.trim();
       const ingredients = ingredientsInput.value.split('\n').map((l) => l.trim()).filter(Boolean);
+      const instructions = instructionsInput.value.trim();
       if (!name || ingredients.length === 0) return;
-      Store.addCustomRecipe({ name, ingredients, createdAt: Date.now() });
+      Store.addCustomRecipe({ name, ingredients, instructions, createdAt: Date.now() });
       nameInput.value = '';
       ingredientsInput.value = '';
+      instructionsInput.value = '';
       document.querySelector('.recipe-form-details').removeAttribute('open');
     });
 
