@@ -5,6 +5,7 @@
 
   let bottlesState = {};
   let mixersState = {};
+  let customRecipesState = {};
   let discoveredRecipes = [];
   let activeTab = 'inventory';
   let activeFilter = 'all';
@@ -16,6 +17,7 @@
     const useFirebase = !!window.railDB;
     let bottleCb = null;
     let mixerCb = null;
+    let recipeCb = null;
 
     function lsGet(key) {
       try { return JSON.parse(localStorage.getItem(key) || '{}'); } catch (e) { return {}; }
@@ -99,6 +101,34 @@
           delete all[id];
           lsSet('rail_mixers', all);
           mixerCb && mixerCb(all);
+        }
+      },
+      onCustomRecipes(cb) {
+        recipeCb = cb;
+        if (useFirebase) {
+          window.railDB.ref('bar-inventory/custom-recipes').on('value', (snap) => cb(snap.val() || {}));
+        } else {
+          cb(lsGet('rail_custom_recipes'));
+        }
+      },
+      addCustomRecipe(recipe) {
+        if (useFirebase) {
+          window.railDB.ref('bar-inventory/custom-recipes').push(recipe);
+        } else {
+          const all = lsGet('rail_custom_recipes');
+          all['r_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7)] = recipe;
+          lsSet('rail_custom_recipes', all);
+          recipeCb && recipeCb(all);
+        }
+      },
+      removeCustomRecipe(id) {
+        if (useFirebase) {
+          window.railDB.ref('bar-inventory/custom-recipes/' + id).remove();
+        } else {
+          const all = lsGet('rail_custom_recipes');
+          delete all[id];
+          lsSet('rail_custom_recipes', all);
+          recipeCb && recipeCb(all);
         }
       },
       async getCache(key) {
@@ -383,8 +413,11 @@
     const discovered = discoveredRecipes.map((d) =>
       R.computeDiscoveredStatus(d.name, d.ingredients, bottlesState, mixersState)
     );
+    const custom = Object.entries(customRecipesState).map(([id, r]) =>
+      Object.assign(R.computeCustomStatus(r.name, r.ingredients, bottlesState, mixersState), { id })
+    );
 
-    let all = curated.concat(discovered);
+    let all = curated.concat(discovered, custom);
     all.sort((a, b) => a.missing - b.missing || a.name.localeCompare(b.name));
 
     if (activeFilter === 'ready') all = all.filter((r) => r.ready);
@@ -402,17 +435,32 @@
     const card = document.createElement('article');
     card.className = 'recipe-card' + (r.ready ? ' ready' : '');
 
+    const sourceLabel = r.source === 'house' ? 'House' : r.source === 'custom' ? 'Yours' : 'Discovered';
+
     const header = document.createElement('div');
     header.className = 'recipe-header';
     header.innerHTML =
       '<h3 class="recipe-name">' + esc(r.name) + '</h3>' +
-      '<span class="source-tag source-' + r.source + '">' +
-      (r.source === 'house' ? 'House' : 'Discovered') + '</span>';
+      '<span class="source-tag source-' + r.source + '">' + sourceLabel + '</span>';
 
     const badge = document.createElement('span');
     badge.className = 'status-badge' + (r.ready ? ' ready' : ' missing');
     badge.textContent = r.ready ? 'Ready' : 'Missing ' + r.missing;
     header.appendChild(badge);
+
+    if (r.source === 'custom') {
+      const removeBtn = document.createElement('button');
+      removeBtn.type = 'button';
+      removeBtn.className = 'recipe-remove-btn';
+      removeBtn.setAttribute('aria-label', 'Remove ' + r.name);
+      removeBtn.textContent = '✕';
+      removeBtn.addEventListener('click', () => {
+        if (confirm('Remove your "' + r.name + '" recipe?')) {
+          Store.removeCustomRecipe(r.id);
+        }
+      });
+      header.appendChild(removeBtn);
+    }
 
     const list = document.createElement('ul');
     list.className = 'ingredient-list';
@@ -497,6 +545,20 @@
       input.focus();
     });
 
+    const recipeForm = document.getElementById('add-recipe-form');
+    recipeForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const nameInput = document.getElementById('recipe-name');
+      const ingredientsInput = document.getElementById('recipe-ingredients');
+      const name = nameInput.value.trim();
+      const ingredients = ingredientsInput.value.split('\n').map((l) => l.trim()).filter(Boolean);
+      if (!name || ingredients.length === 0) return;
+      Store.addCustomRecipe({ name, ingredients, createdAt: Date.now() });
+      nameInput.value = '';
+      ingredientsInput.value = '';
+      document.querySelector('.recipe-form-details').removeAttribute('open');
+    });
+
     document.querySelectorAll('.tab-btn').forEach((btn) =>
       btn.addEventListener('click', () => switchTab(btn.dataset.tab))
     );
@@ -521,6 +583,10 @@
     Store.onMixers((mixers) => {
       mixersState = mixers || {};
       renderMixerChips();
+      if (activeTab === 'suggestions') renderSuggestions();
+    });
+    Store.onCustomRecipes((recipes) => {
+      customRecipesState = recipes || {};
       if (activeTab === 'suggestions') renderSuggestions();
     });
   }

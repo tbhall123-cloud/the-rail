@@ -247,9 +247,9 @@
     };
   }
 
-  // Compute status for a CocktailDB drink.
+  // Shared by discovered (CocktailDB) and custom (user-entered) recipes.
   // ingredients: array of { ingredient, measure } pairs.
-  function computeDiscoveredStatus(drinkName, ingredients, bottlesState, mixersState) {
+  function computeIngredientListStatus(name, ingredients, bottlesState, mixersState, source) {
     const required = [];
     const optional = [];
     for (const { ingredient, measure } of ingredients) {
@@ -270,13 +270,28 @@
     }
     const missing = required.filter((r) => !r.have).length;
     return {
-      name: drinkName,
-      source: 'discovered',
+      name,
+      source,
       ready: required.length > 0 && missing === 0,
       missing,
       required,
       optional,
     };
+  }
+
+  // Compute status for a CocktailDB drink.
+  function computeDiscoveredStatus(drinkName, ingredients, bottlesState, mixersState) {
+    return computeIngredientListStatus(drinkName, ingredients, bottlesState, mixersState, 'discovered');
+  }
+
+  // Compute status for a user-entered recipe.
+  // rawLines: array of free-text ingredient lines, e.g. "2 oz Bourbon".
+  function computeCustomStatus(recipeName, rawLines, bottlesState, mixersState) {
+    const ingredients = (rawLines || [])
+      .map((line) => String(line || '').trim())
+      .filter(Boolean)
+      .map((line) => ({ ingredient: line, measure: '' }));
+    return computeIngredientListStatus(recipeName, ingredients, bottlesState, mixersState, 'custom');
   }
 
   function titleCase(s) {
@@ -295,6 +310,7 @@
     hasCategoryStock,
     computeCuratedStatus,
     computeDiscoveredStatus,
+    computeCustomStatus,
     normalize,
   };
 })();
