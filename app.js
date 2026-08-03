@@ -107,6 +107,16 @@
           bottleCb && bottleCb(all);
         }
       },
+      updateBottleCategory(id, category) {
+        if (useFirebase) {
+          window.railDB.ref('bar-inventory/bottles/' + id + '/category').set(category);
+        } else {
+          const all = lsGet('rail_bottles');
+          if (all[id]) all[id].category = category;
+          lsSet('rail_bottles', all);
+          bottleCb && bottleCb(all);
+        }
+      },
       updateBottleQuantity(id, quantity) {
         if (useFirebase) {
           window.railDB.ref('bar-inventory/bottles/' + id + '/quantity').set(quantity);
@@ -396,6 +406,25 @@
     originRow.className = 'bottle-origin-row';
     renderOriginDisplay(originRow, bottle);
 
+    // ── Category row: dropdown to move the bottle if it was miscategorized ──
+    const categoryRow = document.createElement('div');
+    categoryRow.className = 'bottle-category-row';
+
+    const categorySelect = document.createElement('select');
+    categorySelect.className = 'category-select';
+    categorySelect.setAttribute('aria-label', 'Change category for ' + bottle.name);
+    R.CATEGORIES.forEach((c) => {
+      const opt = document.createElement('option');
+      opt.value = c.id;
+      opt.textContent = c.emoji + ' ' + c.label;
+      if (c.id === bottle.category) opt.selected = true;
+      categorySelect.appendChild(opt);
+    });
+    categorySelect.addEventListener('change', () => {
+      Store.updateBottleCategory(bottle.id, categorySelect.value);
+    });
+    categoryRow.appendChild(categorySelect);
+
     // ── Controls row: quantity, level, lock, remove ──
     const controlsRow = document.createElement('div');
     controlsRow.className = 'bottle-controls-row';
@@ -475,6 +504,7 @@
 
     li.appendChild(nameRow);
     li.appendChild(originRow);
+    li.appendChild(categoryRow);
     li.appendChild(controlsRow);
     return li;
   }
