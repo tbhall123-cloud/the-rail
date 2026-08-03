@@ -6,6 +6,7 @@
   let bottlesState = {};
   let mixersState = {};
   let customRecipesState = {};
+  let favoritesState = {};
   let discoveredRecipes = [];
   let activeTab = 'inventory';
   let activeFilter = 'all';
@@ -18,6 +19,7 @@
     let bottleCb = null;
     let mixerCb = null;
     let recipeCb = null;
+    let favoriteCb = null;
 
     function lsGet(key) {
       try { return JSON.parse(localStorage.getItem(key) || '{}'); } catch (e) { return {}; }
@@ -149,6 +151,34 @@
           delete all[id];
           lsSet('rail_custom_recipes', all);
           recipeCb && recipeCb(all);
+        }
+      },
+      onFavorites(cb) {
+        favoriteCb = cb;
+        if (useFirebase) {
+          window.railDB.ref('bar-inventory/favorites').on('value', (snap) => cb(snap.val() || {}));
+        } else {
+          cb(lsGet('rail_favorites'));
+        }
+      },
+      setFavorite(key, data) {
+        if (useFirebase) {
+          window.railDB.ref('bar-inventory/favorites/' + key).set(data);
+        } else {
+          const all = lsGet('rail_favorites');
+          all[key] = data;
+          lsSet('rail_favorites', all);
+          favoriteCb && favoriteCb(all);
+        }
+      },
+      removeFavorite(key) {
+        if (useFirebase) {
+          window.railDB.ref('bar-inventory/favorites/' + key).remove();
+        } else {
+          const all = lsGet('rail_favorites');
+          delete all[key];
+          lsSet('rail_favorites', all);
+          favoriteCb && favoriteCb(all);
         }
       },
       async getCache(key) {
@@ -558,6 +588,15 @@
     all.forEach((r) => container.appendChild(renderRecipeCard(r)));
   }
 
+  // Stable key for a recipe regardless of which tab it's rendered on.
+  // Custom recipes use their real Firebase id; house/discovered use a
+  // normalized name (favoriting round-trips through a name+source
+  // snapshot, so the same recipe always resolves to the same key).
+  function favoriteKeyFor(r) {
+    if (r.source === 'custom' && r.id) return 'custom:' + r.id;
+    return r.source + ':' + R.normalize(r.name);
+  }
+
   function renderRecipeCard(r) {
     const card = document.createElement('article');
     card.className = 'recipe-card' + (r.ready ? ' ready' : '');
@@ -575,6 +614,30 @@
     badge.textContent = r.ready ? 'Ready' : 'Missing ' + r.missing;
     header.appendChild(badge);
 
+    const favKey = favoriteKeyFor(r);
+    const isFavorited = !!favoritesState[favKey];
+    const favBtn = document.createElement('button');
+    favBtn.type = 'button';
+    favBtn.className = 'favorite-btn' + (isFavorited ? ' active' : '');
+    favBtn.setAttribute('aria-label', (isFavorited ? 'Remove ' : 'Add ') + r.name + (isFavorited ? ' from favorites' : ' to favorites'));
+    favBtn.textContent = isFavorited ? '★' : '☆';
+    favBtn.addEventListener('click', () => {
+      if (isFavorited) {
+        Store.removeFavorite(favKey);
+      } else {
+        const ingredientLines = r.required.map((x) => x.label).concat(r.optional.map((x) => x.label));
+        Store.setFavorite(favKey, {
+          name: r.name,
+          source: r.source,
+          ingredientLines,
+          instructions: r.instructions || '',
+          customId: r.source === 'custom' ? r.id : null,
+          favoritedAt: Date.now(),
+        });
+      }
+    });
+    header.appendChild(favBtn);
+
     if (r.source === 'custom') {
       const removeBtn = document.createElement('button');
       removeBtn.type = 'button';
@@ -584,6 +647,7 @@
       removeBtn.addEventListener('click', () => {
         if (confirm('Remove your "' + r.name + '" recipe?')) {
           Store.removeCustomRecipe(r.id);
+          if (favoritesState[favKey]) Store.removeFavorite(favKey);
         }
       });
       header.appendChild(removeBtn);
@@ -622,6 +686,27 @@
     return card;
   }
 
+  // ── Rendering: Favorites tab ───────────────────────────────────────
+  function renderFavorites() {
+    const container = document.getElementById('favorite-cards');
+    container.innerHTML = '';
+
+    const entries = Object.entries(favoritesState).map(([key, fav]) =>
+      Object.assign(
+        R.computeFavoriteStatus(fav.name, fav.ingredientLines, bottlesState, mixersState, fav.instructions, fav.source),
+        { id: fav.customId || undefined }
+      )
+    );
+    entries.sort((a, b) => a.missing - b.missing || a.name.localeCompare(b.name));
+
+    if (entries.length === 0) {
+      container.innerHTML = '<p class="empty-state">No favorites yet — tap ☆ on any recipe in What Can I Make to save it here.</p>';
+      return;
+    }
+
+    entries.forEach((r) => container.appendChild(renderRecipeCard(r)));
+  }
+
   function esc(v) {
     return String(v == null ? '' : v)
       .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -641,6 +726,7 @@
       renderSuggestions();
       refreshDiscoveredIfNeeded();
     }
+    if (tab === 'favorites') renderFavorites();
   }
 
   function switchFilter(filter) {
@@ -722,15 +808,23 @@
         renderSuggestions();
         refreshDiscoveredIfNeeded();
       }
+      if (activeTab === 'favorites') renderFavorites();
     });
     Store.onMixers((mixers) => {
       mixersState = mixers || {};
       renderMixerChips();
       if (activeTab === 'suggestions') renderSuggestions();
+      if (activeTab === 'favorites') renderFavorites();
     });
     Store.onCustomRecipes((recipes) => {
       customRecipesState = recipes || {};
       if (activeTab === 'suggestions') renderSuggestions();
+      if (activeTab === 'favorites') renderFavorites();
+    });
+    Store.onFavorites((favorites) => {
+      favoritesState = favorites || {};
+      if (activeTab === 'suggestions') renderSuggestions();
+      if (activeTab === 'favorites') renderFavorites();
     });
   }
 

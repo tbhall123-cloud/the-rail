@@ -407,6 +407,19 @@
     return computeIngredientListStatus(recipeName, ingredients, bottlesState, mixersState, 'custom', instructions);
   }
 
+  // Compute status for a favorited recipe, from its saved ingredient-line
+  // snapshot (the rendered "amount + name" labels from whichever source it
+  // was favorited from). Re-classifies those lines fresh each time so the
+  // Ready/Missing status always reflects current inventory, while
+  // originalSource keeps the House/Discovered/Yours tag it had originally.
+  function computeFavoriteStatus(recipeName, ingredientLines, bottlesState, mixersState, instructions, originalSource) {
+    const ingredients = (ingredientLines || [])
+      .map((line) => String(line || '').trim())
+      .filter(Boolean)
+      .map((line) => ({ ingredient: line, measure: '' }));
+    return computeIngredientListStatus(recipeName, ingredients, bottlesState, mixersState, originalSource || 'house', instructions);
+  }
+
   function titleCase(s) {
     return String(s || '').replace(/\b\w/g, (c) => c.toUpperCase());
   }
@@ -424,6 +437,7 @@
     computeCuratedStatus,
     computeDiscoveredStatus,
     computeCustomStatus,
+    computeFavoriteStatus,
     normalize,
   };
 })();

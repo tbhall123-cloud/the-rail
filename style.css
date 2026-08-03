@@ -86,14 +86,14 @@ body {
 
 .tab-btn {
   flex: 1;
-  padding: 0.85rem 0.5rem;
+  padding: 0.85rem 0.35rem;
   background: none;
   border: none;
   color: var(--cream-dim);
   font-family: var(--font-mono);
-  font-size: 0.85rem;
+  font-size: 0.76rem;
   font-weight: 600;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.01em;
   cursor: pointer;
   border-bottom: 2px solid transparent;
   transition: color 0.15s, border-color 0.15s;
@@ -496,6 +496,18 @@ body {
   line-height: 1;
 }
 .recipe-remove-btn:hover { color: var(--red); }
+
+.favorite-btn {
+  background: none;
+  border: none;
+  color: var(--cream-dim);
+  cursor: pointer;
+  font-size: 1.15rem;
+  padding: 0 0.15rem;
+  line-height: 1;
+}
+.favorite-btn:hover { color: var(--brass-bright); }
+.favorite-btn.active { color: var(--brass-bright); }
 
 .status-badge {
   font-size: 0.7rem;
