@@ -6,6 +6,7 @@
 
   const CATEGORIES = [
     { id: 'Whiskey',                  label: 'Whiskey',                  emoji: '🥃' },
+    { id: 'Rye',                      label: 'Rye',                      emoji: '🌾' },
     { id: 'Gin',                      label: 'Gin',                      emoji: '🌿' },
     { id: 'Vodka',                    label: 'Vodka',                    emoji: '❄️' },
     { id: 'Rum',                      label: 'Rum',                      emoji: '🏝️' },
@@ -314,9 +315,17 @@
 
   // Restricted bottles (e.g. special-occasion sipping bottles) are tracked
   // but never count as available stock for cocktail matching.
+  // Rye is its own category for inventory organization, but rye IS
+  // whiskey — any recipe requiring "Whiskey" is satisfied by rye bottles
+  // too, so checking the Whiskey category also checks Rye.
+  const CATEGORY_GROUPS = {
+    Whiskey: ['Whiskey', 'Rye'],
+  };
+
   function hasCategoryStock(bottlesState, category) {
+    const matchCategories = CATEGORY_GROUPS[category] || [category];
     return Object.values(bottlesState || {}).some(
-      (b) => b && b.category === category && b.level !== 'empty' && !b.restricted
+      (b) => b && matchCategories.includes(b.category) && b.level !== 'empty' && !b.restricted
     );
   }
 

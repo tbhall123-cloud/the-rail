@@ -83,6 +83,26 @@
           bottleCb && bottleCb(all);
         }
       },
+      updateBottleName(id, name) {
+        if (useFirebase) {
+          window.railDB.ref('bar-inventory/bottles/' + id + '/name').set(name);
+        } else {
+          const all = lsGet('rail_bottles');
+          if (all[id]) all[id].name = name;
+          lsSet('rail_bottles', all);
+          bottleCb && bottleCb(all);
+        }
+      },
+      updateBottleQuantity(id, quantity) {
+        if (useFirebase) {
+          window.railDB.ref('bar-inventory/bottles/' + id + '/quantity').set(quantity);
+        } else {
+          const all = lsGet('rail_bottles');
+          if (all[id]) all[id].quantity = quantity;
+          lsSet('rail_bottles', all);
+          bottleCb && bottleCb(all);
+        }
+      },
       setMixer(id, data) {
         if (useFirebase) {
           window.railDB.ref('bar-inventory/mixers/' + id).update(data);
@@ -313,9 +333,51 @@
     const li = document.createElement('li');
     li.className = 'bottle-row level-' + bottle.level;
 
-    const name = document.createElement('span');
-    name.className = 'bottle-name';
-    name.textContent = bottle.name;
+    // ── Name row: display name + edit toggle ──
+    const nameRow = document.createElement('div');
+    nameRow.className = 'bottle-name-row';
+
+    const nameWrap = document.createElement('div');
+    nameWrap.className = 'bottle-name-wrap';
+    renderNameDisplay(nameWrap, bottle);
+    nameRow.appendChild(nameWrap);
+
+    // ── Controls row: quantity, level, lock, remove ──
+    const controlsRow = document.createElement('div');
+    controlsRow.className = 'bottle-controls-row';
+
+    const qtyStepper = document.createElement('div');
+    qtyStepper.className = 'qty-stepper';
+
+    const decBtn = document.createElement('button');
+    decBtn.type = 'button';
+    decBtn.className = 'qty-btn';
+    decBtn.textContent = '−';
+    decBtn.setAttribute('aria-label', 'Decrease quantity of ' + bottle.name);
+    decBtn.addEventListener('click', () => {
+      Store.updateBottleQuantity(bottle.id, Math.max(1, (bottle.quantity || 1) - 1));
+    });
+
+    const qtyCount = document.createElement('span');
+    qtyCount.className = 'qty-count';
+    qtyCount.textContent = '×' + (bottle.quantity || 1);
+    qtyCount.title = 'How many bottles of this you have';
+
+    const incBtn = document.createElement('button');
+    incBtn.type = 'button';
+    incBtn.className = 'qty-btn';
+    incBtn.textContent = '+';
+    incBtn.setAttribute('aria-label', 'Increase quantity of ' + bottle.name);
+    incBtn.addEventListener('click', () => {
+      Store.updateBottleQuantity(bottle.id, (bottle.quantity || 1) + 1);
+    });
+
+    qtyStepper.appendChild(decBtn);
+    qtyStepper.appendChild(qtyCount);
+    qtyStepper.appendChild(incBtn);
+
+    const actions = document.createElement('div');
+    actions.className = 'bottle-actions';
 
     const levelBtn = document.createElement('button');
     levelBtn.className = 'level-pill level-' + bottle.level;
@@ -351,11 +413,73 @@
       }
     });
 
-    li.appendChild(name);
-    li.appendChild(levelBtn);
-    li.appendChild(lockBtn);
-    li.appendChild(removeBtn);
+    actions.appendChild(levelBtn);
+    actions.appendChild(lockBtn);
+    actions.appendChild(removeBtn);
+    controlsRow.appendChild(qtyStepper);
+    controlsRow.appendChild(actions);
+
+    li.appendChild(nameRow);
+    li.appendChild(controlsRow);
     return li;
+  }
+
+  // Renders the read-only name + edit (✎) button into nameWrap.
+  // Clicking ✎ swaps it for an inline input; Enter/blur commits,
+  // Escape reverts.
+  function renderNameDisplay(nameWrap, bottle) {
+    nameWrap.innerHTML = '';
+
+    const name = document.createElement('span');
+    name.className = 'bottle-name';
+    name.textContent = bottle.name;
+
+    const editBtn = document.createElement('button');
+    editBtn.type = 'button';
+    editBtn.className = 'icon-btn edit-btn';
+    editBtn.setAttribute('aria-label', 'Edit name for ' + bottle.name);
+    editBtn.textContent = '✎';
+    editBtn.addEventListener('click', () => renderNameEditor(nameWrap, bottle));
+
+    nameWrap.appendChild(name);
+    nameWrap.appendChild(editBtn);
+  }
+
+  function renderNameEditor(nameWrap, bottle) {
+    nameWrap.innerHTML = '';
+
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'bottle-name-input';
+    input.value = bottle.name;
+    input.setAttribute('aria-label', 'Edit name for ' + bottle.name);
+
+    let settled = false;
+    function commit() {
+      if (settled) return;
+      settled = true;
+      const newName = input.value.trim();
+      if (newName && newName !== bottle.name) {
+        Store.updateBottleName(bottle.id, newName);
+      } else {
+        renderNameDisplay(nameWrap, bottle);
+      }
+    }
+    function cancel() {
+      if (settled) return;
+      settled = true;
+      renderNameDisplay(nameWrap, bottle);
+    }
+
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); commit(); }
+      if (e.key === 'Escape') { e.preventDefault(); cancel(); }
+    });
+    input.addEventListener('blur', commit);
+
+    nameWrap.appendChild(input);
+    input.focus();
+    input.select();
   }
 
   function levelLabel(level) {
@@ -536,7 +660,7 @@
       const categorySelect = document.getElementById('bottle-category');
       const name = nameInput.value.trim();
       if (!name) return;
-      Store.addBottle({ name, category: categorySelect.value, level: 'full' });
+      Store.addBottle({ name, category: categorySelect.value, level: 'full', quantity: 1 });
       nameInput.value = '';
       nameInput.focus();
     });

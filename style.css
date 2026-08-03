@@ -220,12 +220,24 @@ body {
 
 .bottle-row {
   display: flex;
-  align-items: center;
-  gap: 0.6rem;
+  flex-direction: column;
+  gap: 0.45rem;
   background: var(--walnut-800);
   border: 1px solid var(--walnut-600);
   border-radius: 4px;
   padding: 0.55rem 0.7rem;
+}
+
+.bottle-name-row {
+  display: flex;
+}
+
+.bottle-name-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex: 1;
+  min-width: 0;
 }
 
 .bottle-name {
@@ -233,6 +245,61 @@ body {
   font-size: 0.88rem;
   min-width: 0;
   overflow-wrap: break-word;
+}
+
+.bottle-name-input {
+  flex: 1;
+  background: var(--walnut-900);
+  border: 1px solid var(--brass);
+  color: var(--cream);
+  font-family: var(--font-mono);
+  font-size: 0.88rem;
+  padding: 0.3rem 0.5rem;
+  border-radius: 4px;
+  min-width: 0;
+}
+.bottle-name-input:focus { outline: none; }
+
+.bottle-controls-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.bottle-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.qty-stepper {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.qty-btn {
+  background: var(--walnut-900);
+  border: 1px solid var(--walnut-600);
+  color: var(--cream-dim);
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  font-weight: 600;
+  width: 1.6rem;
+  height: 1.6rem;
+  line-height: 1;
+  border-radius: 50%;
+  cursor: pointer;
+}
+.qty-btn:hover { color: var(--brass-bright); border-color: var(--brass); }
+
+.qty-count {
+  font-size: 0.78rem;
+  color: var(--cream-dim);
+  min-width: 1.6em;
+  text-align: center;
 }
 
 .level-pill {
@@ -264,6 +331,9 @@ body {
 
 .lock-btn:hover { color: var(--brass-bright); }
 .lock-btn.active { color: var(--brass-bright); }
+
+.edit-btn { font-size: 0.8rem; }
+.edit-btn:hover { color: var(--brass-bright); }
 
 /* ── Mixer chips ────────────────────────────────────────────────── */
 
