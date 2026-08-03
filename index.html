@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>The Rail</title>
+<meta name="description" content="Home bar inventory and cocktail suggestions.">
+<meta name="theme-color" content="#14100d">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🥃</text></svg>">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="app-header">
+  <h1 class="app-title">The Rail</h1>
+  <p class="app-subtitle">home bar &amp; cocktail finder</p>
+  <p id="sync-status" class="sync-status"></p>
+</header>
+
+<nav class="tab-bar" role="tablist">
+  <button class="tab-btn active" data-tab="inventory" type="button" role="tab">Inventory</button>
+  <button class="tab-btn" data-tab="suggestions" type="button" role="tab">What Can I Make</button>
+</nav>
+
+<main class="app-main">
+
+  <section id="tab-inventory" class="tab-panel active">
+
+    <section class="panel-block">
+      <h2 class="panel-heading">Add a Bottle</h2>
+      <form id="add-bottle-form" class="add-form">
+        <input id="bottle-name" type="text" placeholder="e.g. Buffalo Trace Bourbon" autocomplete="off" required>
+        <select id="bottle-category" required></select>
+        <button type="submit" class="btn-primary">Add</button>
+      </form>
+    </section>
+
+    <section class="panel-block">
+      <h2 class="panel-heading">Bar Shelf</h2>
+      <div id="bottle-groups"></div>
+    </section>
+
+    <section class="panel-block">
+      <h2 class="panel-heading">Mixers &amp; Garnishes</h2>
+      <div id="mixer-chips" class="mixer-chips"></div>
+      <form id="add-mixer-form" class="add-form add-form--mixer">
+        <input id="mixer-name" type="text" placeholder="Add something else (e.g. mint)" autocomplete="off">
+        <button type="submit" class="btn-secondary">Add</button>
+      </form>
+    </section>
+
+  </section>
+
+  <section id="tab-suggestions" class="tab-panel">
+
+    <div class="filter-bar">
+      <button class="filter-btn active" data-filter="all" type="button">All</button>
+      <button class="filter-btn" data-filter="ready" type="button">Ready to make</button>
+      <button class="filter-btn" data-filter="one-away" type="button">One bottle away</button>
+    </div>
+
+    <div id="recipe-cards" class="recipe-cards"></div>
+
+  </section>
+
+</main>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="firebase-config.js"></script>
+<script src="cocktails.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

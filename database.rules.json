@@ -1,0 +1,10 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "bar-inventory": {
+      ".read": true,
+      ".write": true
+    }
+  }
+}
