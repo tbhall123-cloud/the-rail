@@ -35,7 +35,7 @@
           ".validate": "newData.hasChildren(['name', 'ingredients'])",
           "name": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 100" },
           "ingredients": {
-            ".validate": "newData.hasChildren() && newData.numChildren() <= 50",
+            ".validate": "newData.hasChildren()",
             "$idx": { ".validate": "newData.isString() && newData.val().length <= 200" }
           },
           "instructions": { ".validate": "newData.isString() && newData.val().length <= 3000" },
@@ -51,7 +51,7 @@
           "name": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 100" },
           "source": { ".validate": "newData.isString() && (newData.val() == 'house' || newData.val() == 'discovered' || newData.val() == 'custom')" },
           "ingredientLines": {
-            ".validate": "newData.hasChildren() && newData.numChildren() <= 50",
+            ".validate": "newData.hasChildren()",
             "$idx": { ".validate": "newData.isString() && newData.val().length <= 200" }
           },
           "instructions": { ".validate": "newData.isString() && newData.val().length <= 3000" },
