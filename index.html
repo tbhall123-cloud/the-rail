@@ -8,6 +8,13 @@
 <meta name="theme-color" content="#14100d">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🥃</text></svg>">
 
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="The Rail">
+<meta name="mobile-web-app-capable" content="yes">
+
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -33,7 +40,11 @@
 
   <section id="tab-shopping" class="tab-panel">
 
-    <p class="panel-note">Bottles that are Low or Empty, so you know what to pick up next time you're at the store. Tap "Bought it" once you've restocked.</p>
+    <p class="panel-note">Bottles that are Low or Empty, plus anything you've added to your "To Buy" list — tap 🛒 on a recipe that's missing something, or add it here directly.</p>
+    <form id="add-wishlist-form" class="add-form">
+      <input id="wishlist-item" type="text" placeholder="Add something else to buy" autocomplete="off" maxlength="200">
+      <button type="submit" class="btn-secondary">Add</button>
+    </form>
     <div id="shopping-list"></div>
 
   </section>
@@ -51,9 +62,9 @@
     <section id="section-add-bottle" class="panel-block">
       <h2 class="panel-heading">Add a Bottle</h2>
       <form id="add-bottle-form" class="add-form">
-        <input id="bottle-name" type="text" placeholder="e.g. Buffalo Trace Bourbon" autocomplete="off" required>
+        <input id="bottle-name" type="text" placeholder="e.g. Buffalo Trace Bourbon" autocomplete="off" maxlength="100" required>
         <select id="bottle-category" required></select>
-        <input id="bottle-origin" type="text" placeholder="Origin (optional, e.g. Kentucky, USA)" autocomplete="off">
+        <input id="bottle-origin" type="text" placeholder="Origin (optional, e.g. Kentucky, USA)" autocomplete="off" maxlength="200">
         <button type="submit" class="btn-primary">Add</button>
       </form>
     </section>
@@ -80,7 +91,7 @@
       <h2 class="panel-heading">Mixers &amp; Garnishes</h2>
       <div id="mixer-chips" class="mixer-chips"></div>
       <form id="add-mixer-form" class="add-form add-form--mixer">
-        <input id="mixer-name" type="text" placeholder="Add something else (e.g. mint)" autocomplete="off">
+        <input id="mixer-name" type="text" placeholder="Add something else (e.g. mint)" autocomplete="off" maxlength="100">
         <button type="submit" class="btn-secondary">Add</button>
       </form>
     </section>
@@ -92,9 +103,9 @@
     <details class="recipe-form-details">
       <summary>+ Add Your Own Recipe</summary>
       <form id="add-recipe-form" class="recipe-form">
-        <input id="recipe-name" type="text" placeholder="Recipe name" autocomplete="off" required>
-        <textarea id="recipe-ingredients" rows="4" placeholder="One ingredient per line, e.g.&#10;2 oz Bourbon&#10;1 dash Angostura bitters&#10;1 tsp sugar" required></textarea>
-        <textarea id="recipe-instructions" rows="3" placeholder="How to make it (optional)"></textarea>
+        <input id="recipe-name" type="text" placeholder="Recipe name" autocomplete="off" maxlength="100" required>
+        <textarea id="recipe-ingredients" rows="4" maxlength="4000" placeholder="One ingredient per line, e.g.&#10;2 oz Bourbon&#10;1 dash Angostura bitters&#10;1 tsp sugar" required></textarea>
+        <textarea id="recipe-instructions" rows="3" maxlength="3000" placeholder="How to make it (optional)"></textarea>
         <button type="submit" class="btn-primary">Add Recipe</button>
       </form>
     </details>

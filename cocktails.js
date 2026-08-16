@@ -390,6 +390,7 @@
         const name = DEFAULT_MIXERS.find((m) => m.id === req.mixer)?.name || titleCase(req.mixer);
         return {
           label: (req.amount ? req.amount + ' ' : '') + name,
+          plainLabel: name,
           have: hasMixer(mixersState, req.mixer),
           category: null,
         };
@@ -398,6 +399,7 @@
       const name = req.note || categoryLabel;
       return {
         label: (req.amount ? req.amount + ' ' : '') + name,
+        plainLabel: name,
         have: hasCategoryStock(bottlesState, req.category),
         category: req.category,
       };
@@ -438,6 +440,7 @@
       if (cls.type === 'bottle') {
         required.push({
           label,
+          plainLabel: ingredient,
           have: hasCategoryStock(bottlesState, cls.category),
           category: cls.category,
         });
@@ -449,6 +452,7 @@
       } else {
         required.push({
           label,
+          plainLabel: ingredient,
           have: hasMixer(mixersState, cls.mixerId || ingredient),
           category: null,
         });

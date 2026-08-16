@@ -295,6 +295,7 @@ body {
 }
 
 .shopping-item.level-empty { border-left-color: var(--red); }
+.shopping-item.wishlist-item { border-left-color: var(--brass-bright); }
 
 .shopping-item-info {
   display: flex;
@@ -699,6 +700,14 @@ body {
 .ingredient-list li.optional { color: var(--cream-dim); }
 .ingredient-list li.optional.have { color: var(--amber); }
 .ingredient-list li.optional.missing-optional { color: #7a7166; }
+
+.wishlist-add-btn {
+  display: block;
+  width: 100%;
+  margin-top: 0.7rem;
+  font-size: 0.76rem;
+  padding: 0.5rem 0.75rem;
+}
 
 .recipe-instructions {
   margin-top: 0.7rem;

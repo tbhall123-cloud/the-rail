@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" fill="#1c1611"/>
+  <!-- rocks glass, filled -->
+  <polygon points="126,140 386,140 344,420 168,420" fill="#c9a35f"/>
+  <!-- ice cubes -->
+  <rect x="196" y="220" width="58" height="58" rx="8" fill="#f4e9d8" opacity="0.9"/>
+  <rect x="270" y="260" width="50" height="50" rx="8" fill="#f4e9d8" opacity="0.75"/>
+  <!-- glass rim -->
+  <rect x="118" y="128" width="276" height="22" rx="10" fill="#e8c874"/>
+</svg>

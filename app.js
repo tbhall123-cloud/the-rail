@@ -7,6 +7,7 @@
   let mixersState = {};
   let customRecipesState = {};
   let favoritesState = {};
+  let wishlistState = {};
   let discoveredRecipes = [];
   let activeTab = 'inventory';
   let activeFilter = 'all';
@@ -22,6 +23,7 @@
     let mixerCb = null;
     let recipeCb = null;
     let favoriteCb = null;
+    let wishlistCb = null;
 
     function lsGet(key) {
       try { return JSON.parse(localStorage.getItem(key) || '{}'); } catch (e) { return {}; }
@@ -203,6 +205,34 @@
           favoriteCb && favoriteCb(all);
         }
       },
+      onWishlist(cb) {
+        wishlistCb = cb;
+        if (useFirebase) {
+          window.railDB.ref('bar-inventory/wishlist').on('value', (snap) => cb(snap.val() || {}));
+        } else {
+          cb(lsGet('rail_wishlist'));
+        }
+      },
+      addWishlistItem(item) {
+        if (useFirebase) {
+          window.railDB.ref('bar-inventory/wishlist').push(item);
+        } else {
+          const all = lsGet('rail_wishlist');
+          all['w_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7)] = item;
+          lsSet('rail_wishlist', all);
+          wishlistCb && wishlistCb(all);
+        }
+      },
+      removeWishlistItem(id) {
+        if (useFirebase) {
+          window.railDB.ref('bar-inventory/wishlist/' + id).remove();
+        } else {
+          const all = lsGet('rail_wishlist');
+          delete all[id];
+          lsSet('rail_wishlist', all);
+          wishlistCb && wishlistCb(all);
+        }
+      },
       async getCache(key) {
         if (useFirebase) {
           const snap = await window.railDB.ref('bar-inventory/recipe-cache/' + key).once('value');
@@ -339,6 +369,10 @@
     const container = document.getElementById('shopping-list');
     container.innerHTML = '';
 
+    const wishlistItems = Object.entries(wishlistState)
+      .map(([id, w]) => Object.assign({ id }, w))
+      .sort((a, b) => (a.addedAt || 0) - (b.addedAt || 0));
+
     const notFull = Object.entries(bottlesState)
       .filter(([, b]) => b && b.level !== 'full')
       .map(([id, b]) => Object.assign({ id }, b));
@@ -346,13 +380,50 @@
     const empty = notFull.filter((b) => b.level === 'empty').sort((a, b) => a.name.localeCompare(b.name));
     const low = notFull.filter((b) => b.level === 'low').sort((a, b) => a.name.localeCompare(b.name));
 
-    if (empty.length === 0 && low.length === 0) {
+    if (wishlistItems.length === 0 && empty.length === 0 && low.length === 0) {
       container.innerHTML = '<p class="empty-state">Nothing to restock — your bar is fully stocked!</p>';
       return;
     }
 
+    if (wishlistItems.length > 0) container.appendChild(renderWishlistGroup(wishlistItems));
     if (empty.length > 0) container.appendChild(renderShoppingGroup('Empty', empty));
     if (low.length > 0) container.appendChild(renderShoppingGroup('Running Low', low));
+  }
+
+  function renderWishlistGroup(items) {
+    const section = document.createElement('section');
+    section.className = 'shopping-group';
+    section.innerHTML = '<h3 class="shopping-heading">To Buy</h3>';
+
+    const list = document.createElement('ul');
+    list.className = 'shopping-list-items';
+    items.forEach((item) => list.appendChild(renderWishlistItem(item)));
+    section.appendChild(list);
+    return section;
+  }
+
+  function renderWishlistItem(item) {
+    const li = document.createElement('li');
+    li.className = 'shopping-item wishlist-item';
+
+    const info = document.createElement('div');
+    info.className = 'shopping-item-info';
+    info.innerHTML =
+      '<span class="shopping-item-name">' + esc(item.label) + '</span>' +
+      (item.note ? '<span class="shopping-item-meta">' + esc(item.note) + '</span>' : '');
+
+    const gotBtn = document.createElement('button');
+    gotBtn.type = 'button';
+    gotBtn.className = 'btn-secondary shopping-buy-btn';
+    gotBtn.textContent = 'Got it';
+    gotBtn.setAttribute('aria-label', 'Remove ' + item.label + ' from wishlist');
+    gotBtn.addEventListener('click', () => {
+      Store.removeWishlistItem(item.id);
+    });
+
+    li.appendChild(info);
+    li.appendChild(gotBtn);
+    return li;
   }
 
   function renderShoppingGroup(heading, bottles) {
@@ -594,6 +665,7 @@
     const input = document.createElement('input');
     input.type = 'text';
     input.className = 'bottle-name-input';
+    input.maxLength = 100;
     input.value = bottle.name;
     input.setAttribute('aria-label', 'Edit name for ' + bottle.name);
 
@@ -661,6 +733,7 @@
     input.type = 'text';
     input.className = 'bottle-origin-input';
     input.placeholder = 'e.g. Kentucky, USA';
+    input.maxLength = 200;
     input.value = bottle.origin || '';
     input.setAttribute('aria-label', 'Edit origin for ' + bottle.name);
 
@@ -779,6 +852,22 @@
     return r.source + ':' + R.normalize(r.name);
   }
 
+  // Adds every missing required item from a recipe to the wishlist,
+  // skipping anything already on it (matched by normalized label).
+  function addMissingToWishlist(r) {
+    const existingLabels = new Set(
+      Object.values(wishlistState).map((w) => R.normalize(w.label))
+    );
+    r.required
+      .filter((ing) => !ing.have)
+      .forEach((ing) => {
+        const label = ing.plainLabel || ing.label;
+        if (existingLabels.has(R.normalize(label))) return;
+        existingLabels.add(R.normalize(label));
+        Store.addWishlistItem({ label, note: 'for ' + r.name, addedAt: Date.now() });
+      });
+  }
+
   function renderRecipeCard(r) {
     const card = document.createElement('article');
     card.className = 'recipe-card' + (r.ready ? ' ready' : '');
@@ -852,6 +941,15 @@
 
     card.appendChild(header);
     card.appendChild(list);
+
+    if (r.missing > 0) {
+      const wishBtn = document.createElement('button');
+      wishBtn.type = 'button';
+      wishBtn.className = 'btn-secondary wishlist-add-btn';
+      wishBtn.textContent = '🛒 Add missing to shopping list';
+      wishBtn.addEventListener('click', () => addMissingToWishlist(r));
+      card.appendChild(wishBtn);
+    }
 
     if (r.instructions) {
       const details = document.createElement('details');
@@ -974,6 +1072,16 @@
       document.querySelector('.recipe-form-details').removeAttribute('open');
     });
 
+    const wishlistForm = document.getElementById('add-wishlist-form');
+    wishlistForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const input = document.getElementById('wishlist-item');
+      const label = input.value.trim();
+      if (!label) return;
+      Store.addWishlistItem({ label, note: '', addedAt: Date.now() });
+      input.value = '';
+    });
+
     document.querySelectorAll('.tab-btn').forEach((btn) =>
       btn.addEventListener('click', () => switchTab(btn.dataset.tab))
     );
@@ -1021,6 +1129,10 @@
       favoritesState = favorites || {};
       if (activeTab === 'suggestions') renderSuggestions();
       if (activeTab === 'favorites') renderFavorites();
+    });
+    Store.onWishlist((wishlist) => {
+      wishlistState = wishlist || {};
+      if (activeTab === 'shopping') renderShoppingList();
     });
   }
 
