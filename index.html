@@ -34,6 +34,14 @@
       <button type="submit" class="btn-primary">Sign In</button>
     </form>
 
+    <form id="signup-form" class="auth-form" style="display:none;">
+      <p class="auth-invite-note">You've been invited to The Rail — set a password to create your account.</p>
+      <input id="signup-email" type="email" placeholder="Email" autocomplete="username" required>
+      <input id="signup-password" type="password" placeholder="Password (6+ characters)" autocomplete="new-password" minlength="6" required>
+      <button type="submit" class="btn-primary">Create Account</button>
+      <button type="button" id="signup-to-login-btn" class="link-btn">Already have an account? Sign in</button>
+    </form>
+
     <p id="auth-message" class="auth-message"></p>
   </div>
 </section>
@@ -52,6 +60,7 @@
   <button class="tab-btn active" data-tab="inventory" type="button" role="tab">Inventory</button>
   <button class="tab-btn" data-tab="suggestions" type="button" role="tab">What Can I Make</button>
   <button class="tab-btn" data-tab="favorites" type="button" role="tab">Favorites</button>
+  <button class="tab-btn" data-tab="admin" type="button" role="tab" id="admin-tab-btn" style="display:none;">Admin</button>
 </nav>
 
 <main class="app-main">
@@ -143,6 +152,27 @@
   <section id="tab-favorites" class="tab-panel">
 
     <div id="favorite-cards" class="recipe-cards"></div>
+
+  </section>
+
+  <section id="tab-admin" class="tab-panel">
+
+    <section class="panel-block">
+      <h2 class="panel-heading">Invite a Friend</h2>
+      <form id="invite-form" class="add-form">
+        <select id="invite-mode">
+          <option value="new">Give them their own new bar</option>
+          <option value="join">Add them to my bar</option>
+        </select>
+        <button type="submit" class="btn-primary">Generate Invite Link</button>
+      </form>
+      <div id="invite-result"></div>
+    </section>
+
+    <section class="panel-block">
+      <h2 class="panel-heading">Invites</h2>
+      <div id="invite-list"></div>
+    </section>
 
   </section>
 

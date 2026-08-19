@@ -24,7 +24,10 @@
   function barPath() { return currentBarPath; }
 
   let authUser = null;
+  let authIsAdmin = false;
   let booted = false;
+  let pendingInviteToken = null;
+  let signupInProgress = false;
 
   // ── Storage adapter: Firebase when configured, localStorage fallback ─
   const Store = (function () {
@@ -1018,6 +1021,7 @@
     }
     if (tab === 'favorites') renderFavorites();
     if (tab === 'shopping') renderShoppingList();
+    if (tab === 'admin' && authIsAdmin) renderInviteList();
   }
 
   function switchFilter(filter) {
@@ -1107,6 +1111,8 @@
       suggestionsSearchQuery = R.normalize(e.target.value);
       renderSuggestions();
     });
+
+    initAdminForm();
   }
 
   // ── Auth ────────────────────────────────────────────────────────────
@@ -1121,6 +1127,9 @@
       return;
     }
 
+    pendingInviteToken = new URLSearchParams(window.location.search).get('invite');
+    showLoginOrSignup();
+
     document.getElementById('login-form').addEventListener('submit', (e) => {
       e.preventDefault();
       const email = document.getElementById('login-email').value.trim();
@@ -1130,6 +1139,20 @@
         .catch((err) => setAuthMessage(authErrorMessage(err), true));
     });
 
+    document.getElementById('signup-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      handleSignup(
+        document.getElementById('signup-email').value.trim(),
+        document.getElementById('signup-password').value
+      );
+    });
+
+    document.getElementById('signup-to-login-btn').addEventListener('click', () => {
+      pendingInviteToken = null;
+      setAuthMessage('', false);
+      showLoginOrSignup();
+    });
+
     document.getElementById('sign-out-btn').addEventListener('click', () => {
       window.railAuth.signOut().then(() => location.reload());
     });
@@ -1137,16 +1160,33 @@
     window.railAuth.onAuthStateChanged(handleAuthChange);
   }
 
+  function showLoginOrSignup() {
+    const showSignup = !!pendingInviteToken;
+    document.getElementById('login-form').style.display = showSignup ? 'none' : '';
+    document.getElementById('signup-form').style.display = showSignup ? '' : 'none';
+  }
+
+  function clearInviteFromUrl() {
+    const url = new URL(window.location.href);
+    url.searchParams.delete('invite');
+    window.history.replaceState({}, '', url);
+  }
+
   function handleAuthChange(user) {
+    if (signupInProgress) return; // the signup flow drives its own state transitions
     if (!user) {
       authUser = null;
       currentBarPath = null;
+      showLoginOrSignup();
       showAuthGate();
       return;
     }
     authUser = user;
+    resolveUserProfile(user);
+  }
 
-    window.railDB.ref('users/' + user.uid).once('value')
+  function resolveUserProfile(user) {
+    return window.railDB.ref('users/' + user.uid).once('value')
       .then((snap) => {
         const profile = snap.val();
         if (!profile || !profile.barId) {
@@ -1155,11 +1195,7 @@
           return;
         }
         currentBarPath = 'bars/' + profile.barId;
-        showApp();
-        if (!booted) {
-          booted = true;
-          boot();
-        }
+        return checkAdminAndShowApp(user);
       })
       .catch((err) => {
         setAuthMessage('Could not load your account — check your connection.', true);
@@ -1168,6 +1204,81 @@
           window.railShowRulesBanner('Firebase rules are blocking sign-in.');
         }
       });
+  }
+
+  function checkAdminAndShowApp(user) {
+    return user.getIdTokenResult().then((result) => {
+      authIsAdmin = !!result.claims.admin;
+      document.getElementById('admin-tab-btn').style.display = authIsAdmin ? '' : 'none';
+      showApp();
+      if (!booted) {
+        booted = true;
+        boot();
+      }
+      if (authIsAdmin && activeTab === 'admin') renderInviteList();
+    });
+  }
+
+  // Two-step claim-then-provision redemption, per the design in
+  // .claude/plans/zesty-mixing-lantern.md: a combined single multi-path
+  // update() can't safely cross-check another path written in that same
+  // call, so this is deliberately two sequential writes, not one.
+  function handleSignup(email, password) {
+    if (!pendingInviteToken) {
+      setAuthMessage('Missing invite link.', true);
+      return;
+    }
+    signupInProgress = true;
+    setAuthMessage('Checking invite…', false);
+
+    let invite;
+    window.railDB.ref('invites/' + pendingInviteToken).once('value')
+      .then((snap) => {
+        invite = snap.val();
+        if (!invite) throw { code: 'rail/invalid-invite' };
+        if (invite.claimedBy) throw { code: 'rail/invite-used' };
+
+        setAuthMessage('Creating your account…', false);
+        return window.railAuth.createUserWithEmailAndPassword(email, password);
+      })
+      .then((cred) => {
+        const uid = cred.user.uid;
+        setAuthMessage('Setting up your bar…', false);
+
+        // Step 1: claim the invite (single-path test-and-set — safe).
+        return window.railDB.ref().update({
+          ['invites/' + pendingInviteToken + '/claimedBy']: uid,
+          ['invites/' + pendingInviteToken + '/claimedAt']: firebase.database.ServerValue.TIMESTAMP,
+        }).then(() => {
+          const barId = invite.mode === 'new' ? uid : invite.targetBarId;
+          // Step 2: provision, as siblings of one node — safe to
+          // cross-reference the invite here since step 1 already committed.
+          return window.railDB.ref('users/' + uid).update({
+            barId,
+            role: 'member',
+            email,
+            inviteToken: pendingInviteToken,
+          });
+        }).then(() => {
+          clearInviteFromUrl();
+          pendingInviteToken = null;
+          signupInProgress = false;
+          return resolveUserProfile(cred.user);
+        });
+      })
+      .catch((err) => {
+        signupInProgress = false;
+        setAuthMessage(signupErrorMessage(err), true);
+      });
+  }
+
+  function signupErrorMessage(err) {
+    if (err.code === 'rail/invalid-invite') return 'This invite link is invalid.';
+    if (err.code === 'rail/invite-used') return 'This invite has already been used — sign in instead if this is your account.';
+    if (err.code === 'auth/email-already-in-use') return 'That email already has an account — sign in instead.';
+    if (err.code === 'auth/weak-password') return 'Password must be at least 6 characters.';
+    if (err.code === 'auth/invalid-email') return 'That email address looks invalid.';
+    return err.message || 'Could not create your account.';
   }
 
   function authErrorMessage(err) {
@@ -1191,6 +1302,84 @@
   function showApp() {
     document.getElementById('auth-gate').classList.remove('visible');
     document.getElementById('app-shell').classList.add('visible');
+  }
+
+  // ── Admin: invites ─────────────────────────────────────────────────
+  function generateInvite(mode) {
+    const token = (window.crypto && window.crypto.randomUUID)
+      ? window.crypto.randomUUID()
+      : ('inv_' + Date.now() + '_' + Math.random().toString(36).slice(2));
+
+    const inviteData = {
+      mode,
+      createdBy: authUser.uid,
+      createdAt: firebase.database.ServerValue.TIMESTAMP,
+    };
+    if (mode === 'join') {
+      inviteData.targetBarId = currentBarPath.replace('bars/', '');
+    }
+
+    window.railDB.ref('invites/' + token).set(inviteData)
+      .then(() => {
+        showInviteResult(token);
+        renderInviteList();
+      })
+      .catch((err) => {
+        document.getElementById('invite-result').innerHTML =
+          '<p class="auth-message error">Failed to create invite: ' + esc(err.message) + '</p>';
+      });
+  }
+
+  function showInviteResult(token) {
+    const link = window.location.origin + window.location.pathname + '?invite=' + token;
+    const container = document.getElementById('invite-result');
+    container.innerHTML =
+      '<div class="invite-result-card">' +
+      '<span class="invite-result-link">' + esc(link) + '</span>' +
+      '<button type="button" class="btn-secondary" id="copy-invite-btn">Copy Link</button>' +
+      '</div>';
+    document.getElementById('copy-invite-btn').addEventListener('click', () => {
+      navigator.clipboard.writeText(link).then(() => {
+        document.getElementById('copy-invite-btn').textContent = 'Copied!';
+      });
+    });
+  }
+
+  function renderInviteList() {
+    const container = document.getElementById('invite-list');
+    window.railDB.ref('invites').once('value').then((snap) => {
+      const invites = snap.val() || {};
+      const entries = Object.entries(invites).sort((a, b) => (b[1].createdAt || 0) - (a[1].createdAt || 0));
+
+      if (entries.length === 0) {
+        container.innerHTML = '<p class="empty-state">No invites yet.</p>';
+        return;
+      }
+
+      const list = document.createElement('ul');
+      list.className = 'invite-list-items';
+      entries.forEach(([token, invite]) => {
+        const li = document.createElement('li');
+        li.className = 'invite-list-item';
+        const modeLabel = invite.mode === 'new' ? 'New bar' : 'Join my bar';
+        const claimed = !!invite.claimedBy;
+        li.innerHTML =
+          '<span>' + esc(modeLabel) + '<br><span class="invite-list-meta">' + esc(token.slice(0, 8)) + '…</span></span>' +
+          '<span class="invite-status-pill ' + (claimed ? 'claimed' : 'pending') + '">' + (claimed ? 'Claimed' : 'Pending') + '</span>';
+        list.appendChild(li);
+      });
+      container.innerHTML = '';
+      container.appendChild(list);
+    });
+  }
+
+  function initAdminForm() {
+    const form = document.getElementById('invite-form');
+    if (!form) return;
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      generateInvite(document.getElementById('invite-mode').value);
+    });
   }
 
   // ── Boot ────────────────────────────────────────────────────────────
