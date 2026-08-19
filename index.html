@@ -23,10 +23,28 @@
 </head>
 <body>
 
+<section id="auth-gate" class="auth-gate">
+  <div class="auth-card">
+    <h1 class="auth-title">The Rail</h1>
+    <p class="auth-subtitle">home bar &amp; cocktail finder</p>
+
+    <form id="login-form" class="auth-form">
+      <input id="login-email" type="email" placeholder="Email" autocomplete="username" required>
+      <input id="login-password" type="password" placeholder="Password" autocomplete="current-password" required>
+      <button type="submit" class="btn-primary">Sign In</button>
+    </form>
+
+    <p id="auth-message" class="auth-message"></p>
+  </div>
+</section>
+
+<div id="app-shell" class="app-shell">
+
 <header class="app-header">
   <h1 class="app-title">The Rail</h1>
   <p class="app-subtitle">home bar &amp; cocktail finder</p>
   <p id="sync-status" class="sync-status"></p>
+  <button id="sign-out-btn" type="button" class="sign-out-btn">Sign Out</button>
 </header>
 
 <nav class="tab-bar" role="tablist">
@@ -130,8 +148,11 @@
 
 </main>
 
+</div>
+
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="firebase-config.js"></script>
 <script src="cocktails.js"></script>
 <script src="app.js"></script>

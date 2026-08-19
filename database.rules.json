@@ -2,82 +2,139 @@
   "rules": {
     ".read": false,
     ".write": false,
-    "bar-inventory": {
-      ".read": true,
 
-      "bottles": {
-        "$id": {
-          ".write": true,
-          ".validate": "newData.hasChildren(['name', 'category', 'level'])",
-          "name": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 100" },
-          "category": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 50" },
-          "level": { ".validate": "newData.isString() && (newData.val() == 'full' || newData.val() == 'low' || newData.val() == 'empty')" },
-          "quantity": { ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 999" },
-          "origin": { ".validate": "newData.isString() && newData.val().length <= 200" },
-          "restricted": { ".validate": "newData.isBoolean()" },
-          "$other": { ".validate": false }
-        }
-      },
+    "invites": {
+      ".read": "auth != null && auth.token.admin === true",
 
-      "mixers": {
-        "$id": {
-          ".write": true,
-          ".validate": "newData.hasChildren(['name', 'present'])",
-          "name": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 100" },
-          "present": { ".validate": "newData.isBoolean()" },
-          "$other": { ".validate": false }
-        }
-      },
+      "$token": {
+        ".read": "auth != null",
 
-      "custom-recipes": {
-        "$id": {
-          ".write": true,
-          ".validate": "newData.hasChildren(['name', 'ingredients'])",
-          "name": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 100" },
-          "ingredients": {
-            ".validate": "newData.hasChildren()",
-            "$idx": { ".validate": "newData.isString() && newData.val().length <= 200" }
-          },
-          "instructions": { ".validate": "newData.isString() && newData.val().length <= 3000" },
-          "createdAt": { ".validate": "newData.isNumber()" },
-          "$other": { ".validate": false }
-        }
-      },
+        "mode": {
+          ".write": "auth != null && auth.token.admin === true",
+          ".validate": "newData.isString() && (newData.val() === 'new' || newData.val() === 'join')"
+        },
+        "targetBarId": {
+          ".write": "auth != null && auth.token.admin === true",
+          ".validate": "newData.isString() && newData.val().length > 0"
+        },
+        "createdBy": {
+          ".write": "auth != null && auth.token.admin === true",
+          ".validate": "newData.isString() && newData.val() === auth.uid"
+        },
+        "createdAt": {
+          ".write": "auth != null && auth.token.admin === true",
+          ".validate": "newData.val() === now"
+        },
+        "claimedBy": {
+          ".write": "auth != null && !data.exists() && newData.val() === auth.uid",
+          ".validate": "newData.isString()"
+        },
+        "claimedAt": {
+          ".write": "auth != null && newData.val() === now",
+          ".validate": "newData.val() === now"
+        },
 
-      "favorites": {
-        "$id": {
-          ".write": true,
-          ".validate": "newData.hasChildren(['name', 'source', 'ingredientLines'])",
-          "name": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 100" },
-          "source": { ".validate": "newData.isString() && (newData.val() == 'house' || newData.val() == 'discovered' || newData.val() == 'custom')" },
-          "ingredientLines": {
-            ".validate": "newData.hasChildren()",
-            "$idx": { ".validate": "newData.isString() && newData.val().length <= 200" }
-          },
-          "instructions": { ".validate": "newData.isString() && newData.val().length <= 3000" },
-          "customId": { ".validate": "newData.isString() || newData.val() == null" },
-          "favoritedAt": { ".validate": "newData.isNumber()" },
-          "$other": { ".validate": false }
-        }
-      },
+        "$other": { ".validate": false }
+      }
+    },
 
-      "wishlist": {
-        "$id": {
-          ".write": true,
-          ".validate": "newData.hasChildren(['label'])",
-          "label": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 200" },
-          "note": { ".validate": "newData.isString() && newData.val().length <= 200" },
-          "addedAt": { ".validate": "newData.isNumber()" },
-          "$other": { ".validate": false }
-        }
-      },
+    "users": {
+      ".read": "auth != null && auth.token.admin === true",
 
-      "recipe-cache": {
-        "$key": {
-          ".write": true,
-          ".validate": "newData.hasChildren(['data', 'ts'])",
-          "ts": { ".validate": "newData.isNumber()" },
-          "data": { ".validate": true }
+      "$uid": {
+        ".read": "auth != null && (auth.uid === $uid || auth.token.admin === true)",
+        ".write": "auth != null && (auth.uid === $uid || auth.token.admin === true)",
+
+        "barId": {
+          ".write": "auth != null && (auth.token.admin === true || (auth.uid === $uid && newData.exists()))",
+          ".validate": "newData.isString() && newData.val().length > 0 && (auth.token.admin === true || (!data.exists() && root.child('invites').child(newData.parent().child('inviteToken').val()).child('claimedBy').val() === auth.uid && ((root.child('invites').child(newData.parent().child('inviteToken').val()).child('mode').val() === 'new' && newData.val() === auth.uid) || (root.child('invites').child(newData.parent().child('inviteToken').val()).child('mode').val() === 'join' && newData.val() === root.child('invites').child(newData.parent().child('inviteToken').val()).child('targetBarId').val()))))"
+        },
+
+        "role": {
+          ".validate": "newData.val() === 'member' || auth.token.admin === true"
+        },
+
+        "email": {
+          ".validate": "newData.val() === auth.token.email || auth.token.admin === true"
+        },
+
+        "inviteToken": {
+          ".write": "auth != null && (auth.token.admin === true || (auth.uid === $uid && !data.exists()))",
+          ".validate": "newData.isString() && root.child('invites').child(newData.val()).child('claimedBy').val() === auth.uid"
+        },
+
+        "$other": { ".validate": false }
+      }
+    },
+
+    "bars": {
+      "$barId": {
+        ".read": "auth != null && (auth.token.admin === true || root.child('users').child(auth.uid).child('barId').val() === $barId)",
+        ".write": "auth != null && (auth.token.admin === true || root.child('users').child(auth.uid).child('barId').val() === $barId)",
+
+        "bottles": {
+          "$id": {
+            ".validate": "newData.hasChildren(['name', 'category', 'level'])",
+            "name": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 100" },
+            "category": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 50" },
+            "level": { ".validate": "newData.isString() && (newData.val() == 'full' || newData.val() == 'low' || newData.val() == 'empty')" },
+            "quantity": { ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 999" },
+            "origin": { ".validate": "newData.isString() && newData.val().length <= 200" },
+            "restricted": { ".validate": "newData.isBoolean()" },
+            "$other": { ".validate": false }
+          }
+        },
+        "mixers": {
+          "$id": {
+            ".validate": "newData.hasChildren(['name', 'present'])",
+            "name": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 100" },
+            "present": { ".validate": "newData.isBoolean()" },
+            "$other": { ".validate": false }
+          }
+        },
+        "custom-recipes": {
+          "$id": {
+            ".validate": "newData.hasChildren(['name', 'ingredients'])",
+            "name": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 100" },
+            "ingredients": {
+              ".validate": "newData.hasChildren()",
+              "$idx": { ".validate": "newData.isString() && newData.val().length <= 200" }
+            },
+            "instructions": { ".validate": "newData.isString() && newData.val().length <= 3000" },
+            "createdAt": { ".validate": "newData.isNumber()" },
+            "$other": { ".validate": false }
+          }
+        },
+        "favorites": {
+          "$id": {
+            ".validate": "newData.hasChildren(['name', 'source', 'ingredientLines'])",
+            "name": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 100" },
+            "source": { ".validate": "newData.isString() && (newData.val() == 'house' || newData.val() == 'discovered' || newData.val() == 'custom')" },
+            "ingredientLines": {
+              ".validate": "newData.hasChildren()",
+              "$idx": { ".validate": "newData.isString() && newData.val().length <= 200" }
+            },
+            "instructions": { ".validate": "newData.isString() && newData.val().length <= 3000" },
+            "customId": { ".validate": "newData.isString() || newData.val() == null" },
+            "favoritedAt": { ".validate": "newData.isNumber()" },
+            "$other": { ".validate": false }
+          }
+        },
+        "wishlist": {
+          "$id": {
+            ".validate": "newData.hasChildren(['label'])",
+            "label": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 200" },
+            "note": { ".validate": "newData.isString() && newData.val().length <= 200" },
+            "addedAt": { ".validate": "newData.isNumber()" },
+            "$other": { ".validate": false }
+          }
+        },
+        "recipe-cache": {
+          "$key": {
+            ".validate": "newData.hasChildren(['data', 'ts'])",
+            "ts": { ".validate": "newData.isNumber()" },
+            "data": { ".validate": true }
+          }
         }
       }
     }

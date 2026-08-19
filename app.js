@@ -16,6 +16,16 @@
   let inventorySearchQuery = '';
   let suggestionsSearchQuery = '';
 
+  // Set once auth resolves to 'bars/{barId}' for the signed-in user's bar.
+  // Store methods read this via barPath() at call time, not at Store
+  // construction time, so it's safe for this to still be null while the
+  // Store object itself is built at module load.
+  let currentBarPath = null;
+  function barPath() { return currentBarPath; }
+
+  let authUser = null;
+  let booted = false;
+
   // ── Storage adapter: Firebase when configured, localStorage fallback ─
   const Store = (function () {
     const useFirebase = !!window.railDB;
@@ -36,7 +46,7 @@
       onBottles(cb) {
         bottleCb = cb;
         if (useFirebase) {
-          window.railDB.ref('bar-inventory/bottles').on('value', (snap) => cb(snap.val() || {}));
+          window.railDB.ref(barPath() + '/bottles').on('value', (snap) => cb(snap.val() || {}));
         } else {
           cb(lsGet('rail_bottles'));
         }
@@ -44,14 +54,14 @@
       onMixers(cb) {
         mixerCb = cb;
         if (useFirebase) {
-          window.railDB.ref('bar-inventory/mixers').on('value', (snap) => cb(snap.val() || {}));
+          window.railDB.ref(barPath() + '/mixers').on('value', (snap) => cb(snap.val() || {}));
         } else {
           cb(lsGet('rail_mixers'));
         }
       },
       addBottle(bottle) {
         if (useFirebase) {
-          window.railDB.ref('bar-inventory/bottles').push(bottle);
+          window.railDB.ref(barPath() + '/bottles').push(bottle);
         } else {
           const all = lsGet('rail_bottles');
           all['b_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7)] = bottle;
@@ -61,7 +71,7 @@
       },
       updateBottleLevel(id, level) {
         if (useFirebase) {
-          window.railDB.ref('bar-inventory/bottles/' + id + '/level').set(level);
+          window.railDB.ref(barPath() + '/bottles/' + id + '/level').set(level);
         } else {
           const all = lsGet('rail_bottles');
           if (all[id]) all[id].level = level;
@@ -71,7 +81,7 @@
       },
       removeBottle(id) {
         if (useFirebase) {
-          window.railDB.ref('bar-inventory/bottles/' + id).remove();
+          window.railDB.ref(barPath() + '/bottles/' + id).remove();
         } else {
           const all = lsGet('rail_bottles');
           delete all[id];
@@ -81,7 +91,7 @@
       },
       setBottleRestricted(id, restricted) {
         if (useFirebase) {
-          window.railDB.ref('bar-inventory/bottles/' + id + '/restricted').set(restricted);
+          window.railDB.ref(barPath() + '/bottles/' + id + '/restricted').set(restricted);
         } else {
           const all = lsGet('rail_bottles');
           if (all[id]) all[id].restricted = restricted;
@@ -91,7 +101,7 @@
       },
       updateBottleName(id, name) {
         if (useFirebase) {
-          window.railDB.ref('bar-inventory/bottles/' + id + '/name').set(name);
+          window.railDB.ref(barPath() + '/bottles/' + id + '/name').set(name);
         } else {
           const all = lsGet('rail_bottles');
           if (all[id]) all[id].name = name;
@@ -101,7 +111,7 @@
       },
       updateBottleOrigin(id, origin) {
         if (useFirebase) {
-          window.railDB.ref('bar-inventory/bottles/' + id + '/origin').set(origin);
+          window.railDB.ref(barPath() + '/bottles/' + id + '/origin').set(origin);
         } else {
           const all = lsGet('rail_bottles');
           if (all[id]) all[id].origin = origin;
@@ -111,7 +121,7 @@
       },
       updateBottleCategory(id, category) {
         if (useFirebase) {
-          window.railDB.ref('bar-inventory/bottles/' + id + '/category').set(category);
+          window.railDB.ref(barPath() + '/bottles/' + id + '/category').set(category);
         } else {
           const all = lsGet('rail_bottles');
           if (all[id]) all[id].category = category;
@@ -121,7 +131,7 @@
       },
       updateBottleQuantity(id, quantity) {
         if (useFirebase) {
-          window.railDB.ref('bar-inventory/bottles/' + id + '/quantity').set(quantity);
+          window.railDB.ref(barPath() + '/bottles/' + id + '/quantity').set(quantity);
         } else {
           const all = lsGet('rail_bottles');
           if (all[id]) all[id].quantity = quantity;
@@ -131,7 +141,7 @@
       },
       setMixer(id, data) {
         if (useFirebase) {
-          window.railDB.ref('bar-inventory/mixers/' + id).update(data);
+          window.railDB.ref(barPath() + '/mixers/' + id).update(data);
         } else {
           const all = lsGet('rail_mixers');
           all[id] = Object.assign({}, all[id], data);
@@ -141,7 +151,7 @@
       },
       removeMixer(id) {
         if (useFirebase) {
-          window.railDB.ref('bar-inventory/mixers/' + id).remove();
+          window.railDB.ref(barPath() + '/mixers/' + id).remove();
         } else {
           const all = lsGet('rail_mixers');
           delete all[id];
@@ -152,14 +162,14 @@
       onCustomRecipes(cb) {
         recipeCb = cb;
         if (useFirebase) {
-          window.railDB.ref('bar-inventory/custom-recipes').on('value', (snap) => cb(snap.val() || {}));
+          window.railDB.ref(barPath() + '/custom-recipes').on('value', (snap) => cb(snap.val() || {}));
         } else {
           cb(lsGet('rail_custom_recipes'));
         }
       },
       addCustomRecipe(recipe) {
         if (useFirebase) {
-          window.railDB.ref('bar-inventory/custom-recipes').push(recipe);
+          window.railDB.ref(barPath() + '/custom-recipes').push(recipe);
         } else {
           const all = lsGet('rail_custom_recipes');
           all['r_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7)] = recipe;
@@ -169,7 +179,7 @@
       },
       removeCustomRecipe(id) {
         if (useFirebase) {
-          window.railDB.ref('bar-inventory/custom-recipes/' + id).remove();
+          window.railDB.ref(barPath() + '/custom-recipes/' + id).remove();
         } else {
           const all = lsGet('rail_custom_recipes');
           delete all[id];
@@ -180,14 +190,14 @@
       onFavorites(cb) {
         favoriteCb = cb;
         if (useFirebase) {
-          window.railDB.ref('bar-inventory/favorites').on('value', (snap) => cb(snap.val() || {}));
+          window.railDB.ref(barPath() + '/favorites').on('value', (snap) => cb(snap.val() || {}));
         } else {
           cb(lsGet('rail_favorites'));
         }
       },
       setFavorite(key, data) {
         if (useFirebase) {
-          window.railDB.ref('bar-inventory/favorites/' + key).set(data);
+          window.railDB.ref(barPath() + '/favorites/' + key).set(data);
         } else {
           const all = lsGet('rail_favorites');
           all[key] = data;
@@ -197,7 +207,7 @@
       },
       removeFavorite(key) {
         if (useFirebase) {
-          window.railDB.ref('bar-inventory/favorites/' + key).remove();
+          window.railDB.ref(barPath() + '/favorites/' + key).remove();
         } else {
           const all = lsGet('rail_favorites');
           delete all[key];
@@ -208,14 +218,14 @@
       onWishlist(cb) {
         wishlistCb = cb;
         if (useFirebase) {
-          window.railDB.ref('bar-inventory/wishlist').on('value', (snap) => cb(snap.val() || {}));
+          window.railDB.ref(barPath() + '/wishlist').on('value', (snap) => cb(snap.val() || {}));
         } else {
           cb(lsGet('rail_wishlist'));
         }
       },
       addWishlistItem(item) {
         if (useFirebase) {
-          window.railDB.ref('bar-inventory/wishlist').push(item);
+          window.railDB.ref(barPath() + '/wishlist').push(item);
         } else {
           const all = lsGet('rail_wishlist');
           all['w_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7)] = item;
@@ -225,7 +235,7 @@
       },
       removeWishlistItem(id) {
         if (useFirebase) {
-          window.railDB.ref('bar-inventory/wishlist/' + id).remove();
+          window.railDB.ref(barPath() + '/wishlist/' + id).remove();
         } else {
           const all = lsGet('rail_wishlist');
           delete all[id];
@@ -235,7 +245,7 @@
       },
       async getCache(key) {
         if (useFirebase) {
-          const snap = await window.railDB.ref('bar-inventory/recipe-cache/' + key).once('value');
+          const snap = await window.railDB.ref(barPath() + '/recipe-cache/' + key).once('value');
           return snap.val();
         }
         const all = lsGet('rail_cache');
@@ -243,7 +253,7 @@
       },
       async setCache(key, entry) {
         if (useFirebase) {
-          await window.railDB.ref('bar-inventory/recipe-cache/' + key).set(entry);
+          await window.railDB.ref(barPath() + '/recipe-cache/' + key).set(entry);
         } else {
           const all = lsGet('rail_cache');
           all[key] = entry;
@@ -1099,6 +1109,90 @@
     });
   }
 
+  // ── Auth ────────────────────────────────────────────────────────────
+  // Local mode (no Firebase configured) skips auth entirely and boots
+  // straight in — there's nothing to protect without a shared backend.
+  // With Firebase configured, nothing boots until a signed-in user is
+  // resolved to a bar via their /users/{uid} record.
+  function initAuth() {
+    if (!Store.useFirebase) {
+      showApp();
+      boot();
+      return;
+    }
+
+    document.getElementById('login-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const email = document.getElementById('login-email').value.trim();
+      const password = document.getElementById('login-password').value;
+      setAuthMessage('Signing in…', false);
+      window.railAuth.signInWithEmailAndPassword(email, password)
+        .catch((err) => setAuthMessage(authErrorMessage(err), true));
+    });
+
+    document.getElementById('sign-out-btn').addEventListener('click', () => {
+      window.railAuth.signOut().then(() => location.reload());
+    });
+
+    window.railAuth.onAuthStateChanged(handleAuthChange);
+  }
+
+  function handleAuthChange(user) {
+    if (!user) {
+      authUser = null;
+      currentBarPath = null;
+      showAuthGate();
+      return;
+    }
+    authUser = user;
+
+    window.railDB.ref('users/' + user.uid).once('value')
+      .then((snap) => {
+        const profile = snap.val();
+        if (!profile || !profile.barId) {
+          setAuthMessage("Your account isn't linked to a bar yet — ask the admin to set you up.", false);
+          showAuthGate();
+          return;
+        }
+        currentBarPath = 'bars/' + profile.barId;
+        showApp();
+        if (!booted) {
+          booted = true;
+          boot();
+        }
+      })
+      .catch((err) => {
+        setAuthMessage('Could not load your account — check your connection.', true);
+        showAuthGate();
+        if (err.code === 'PERMISSION_DENIED') {
+          window.railShowRulesBanner('Firebase rules are blocking sign-in.');
+        }
+      });
+  }
+
+  function authErrorMessage(err) {
+    if (err.code === 'auth/invalid-credential' || err.code === 'auth/wrong-password' || err.code === 'auth/user-not-found') {
+      return 'Wrong email or password.';
+    }
+    return err.message || 'Sign-in failed.';
+  }
+
+  function setAuthMessage(text, isError) {
+    const el = document.getElementById('auth-message');
+    el.textContent = text;
+    el.classList.toggle('error', !!isError);
+  }
+
+  function showAuthGate() {
+    document.getElementById('auth-gate').classList.add('visible');
+    document.getElementById('app-shell').classList.remove('visible');
+  }
+
+  function showApp() {
+    document.getElementById('auth-gate').classList.remove('visible');
+    document.getElementById('app-shell').classList.add('visible');
+  }
+
   // ── Boot ────────────────────────────────────────────────────────────
   function boot() {
     initForm();
@@ -1136,5 +1230,5 @@
     });
   }
 
-  document.addEventListener('DOMContentLoaded', boot);
+  document.addEventListener('DOMContentLoaded', initAuth);
 })();
