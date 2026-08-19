@@ -31,9 +31,10 @@ if (!keyPath || !uid) {
   process.exit(1);
 }
 
-let admin;
+let initializeApp, cert, getAuth;
 try {
-  admin = require('firebase-admin');
+  ({ initializeApp, cert } = require('firebase-admin/app'));
+  ({ getAuth } = require('firebase-admin/auth'));
 } catch (e) {
   console.error('Missing dependency. Run "npm install firebase-admin" in this directory first.');
   process.exit(1);
@@ -41,11 +42,11 @@ try {
 
 const serviceAccount = require(path.resolve(keyPath));
 
-admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount),
+const app = initializeApp({
+  credential: cert(serviceAccount),
 });
 
-admin.auth().setCustomUserClaims(uid, { admin: true })
+getAuth(app).setCustomUserClaims(uid, { admin: true })
   .then(() => {
     console.log(`✓ ${uid} is now an admin.`);
     console.log('  They need to sign out and back in for it to take effect immediately.');

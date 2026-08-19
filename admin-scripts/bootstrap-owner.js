@@ -26,9 +26,11 @@ if (!keyPath || !uid) {
   process.exit(1);
 }
 
-let admin;
+let initializeApp, cert, getAuth, getDatabase;
 try {
-  admin = require('firebase-admin');
+  ({ initializeApp, cert } = require('firebase-admin/app'));
+  ({ getAuth } = require('firebase-admin/auth'));
+  ({ getDatabase } = require('firebase-admin/database'));
 } catch (e) {
   console.error('Missing dependency. Run "npm install firebase-admin" in this directory first.');
   process.exit(1);
@@ -36,15 +38,16 @@ try {
 
 const serviceAccount = require(path.resolve(keyPath));
 
-admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount),
+const app = initializeApp({
+  credential: cert(serviceAccount),
   databaseURL: 'https://the-rail-bar-inventory-default-rtdb.firebaseio.com',
 });
 
-const db = admin.database();
+const db = getDatabase(app);
+const auth = getAuth(app);
 
 async function main() {
-  const userRecord = await admin.auth().getUser(uid);
+  const userRecord = await auth.getUser(uid);
   console.log(`Provisioning ${userRecord.email} (${uid}) as the admin...`);
 
   const oldSnap = await db.ref('bar-inventory').once('value');
@@ -63,7 +66,7 @@ async function main() {
   });
   console.log('✓ Created /users/' + uid + ' profile.');
 
-  await admin.auth().setCustomUserClaims(uid, { admin: true });
+  await auth.setCustomUserClaims(uid, { admin: true });
   console.log('✓ Granted the admin custom claim.');
 
   console.log('\nDone. Sign out and back in on the site for the admin claim to take effect.');
