@@ -1310,16 +1310,20 @@
       ? window.crypto.randomUUID()
       : ('inv_' + Date.now() + '_' + Math.random().toString(36).slice(2));
 
-    const inviteData = {
-      mode,
-      createdBy: authUser.uid,
-      createdAt: firebase.database.ServerValue.TIMESTAMP,
-    };
+    // Written as leaf-path updates (not a single .set() on the parent
+    // node) because the rules only grant .write on the individual
+    // fields (mode/createdBy/createdAt/targetBarId), not on
+    // /invites/{token} itself — matches the same pattern the
+    // claim-then-provision redemption flow already uses.
+    const updates = {};
+    updates['invites/' + token + '/mode'] = mode;
+    updates['invites/' + token + '/createdBy'] = authUser.uid;
+    updates['invites/' + token + '/createdAt'] = firebase.database.ServerValue.TIMESTAMP;
     if (mode === 'join') {
-      inviteData.targetBarId = currentBarPath.replace('bars/', '');
+      updates['invites/' + token + '/targetBarId'] = currentBarPath.replace('bars/', '');
     }
 
-    window.railDB.ref('invites/' + token).set(inviteData)
+    window.railDB.ref().update(updates)
       .then(() => {
         showInviteResult(token);
         renderInviteList();
