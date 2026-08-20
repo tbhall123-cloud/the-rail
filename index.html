@@ -19,7 +19,12 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 
-<link rel="stylesheet" href="style.css">
+<!-- ?v=N cache-busts these local files on GitHub Pages' CDN — bump N in
+     every commit that changes app.js/cocktails.js/firebase-config.js/
+     style.css, since browsers and edge caches don't know a file changed
+     just because index.html did (its own cache header is much shorter,
+     which is why editing only index.html doesn't need this). -->
+<link rel="stylesheet" href="style.css?v=2">
 </head>
 <body>
 
@@ -183,8 +188,8 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-<script src="firebase-config.js"></script>
-<script src="cocktails.js"></script>
-<script src="app.js"></script>
+<script src="firebase-config.js?v=2"></script>
+<script src="cocktails.js?v=2"></script>
+<script src="app.js?v=2"></script>
 </body>
 </html>
