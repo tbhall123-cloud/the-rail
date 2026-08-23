@@ -1367,14 +1367,67 @@
         li.className = 'invite-list-item';
         const modeLabel = invite.mode === 'new' ? 'New bar' : 'Join my bar';
         const claimed = !!invite.claimedBy;
-        li.innerHTML =
-          '<span>' + esc(modeLabel) + '<br><span class="invite-list-meta">' + esc(token.slice(0, 8)) + '…</span></span>' +
-          '<span class="invite-status-pill ' + (claimed ? 'claimed' : 'pending') + '">' + (claimed ? 'Claimed' : 'Pending') + '</span>';
+
+        const info = document.createElement('span');
+        info.innerHTML =
+          esc(modeLabel) + '<br><span class="invite-list-meta">' + esc(token.slice(0, 8)) + '…</span>';
+        li.appendChild(info);
+
+        if (claimed) {
+          const pill = document.createElement('span');
+          pill.className = 'invite-status-pill claimed';
+          pill.textContent = 'Claimed';
+          li.appendChild(pill);
+        } else {
+          const actions = document.createElement('span');
+          actions.className = 'invite-list-actions';
+
+          const pill = document.createElement('span');
+          pill.className = 'invite-status-pill pending';
+          pill.textContent = 'Pending';
+          actions.appendChild(pill);
+
+          const cancelBtn = document.createElement('button');
+          cancelBtn.type = 'button';
+          cancelBtn.className = 'invite-cancel-btn';
+          cancelBtn.textContent = 'Cancel';
+          cancelBtn.setAttribute('aria-label', 'Cancel invite ' + token.slice(0, 8));
+          cancelBtn.addEventListener('click', () => {
+            if (confirm('Cancel this invite? The link will stop working.')) {
+              cancelInvite(token, invite);
+            }
+          });
+          actions.appendChild(cancelBtn);
+
+          li.appendChild(actions);
+        }
+
         list.appendChild(li);
       });
       container.innerHTML = '';
       container.appendChild(list);
     });
+  }
+
+  // Cancelling only ever applies to pending (unclaimed) invites — once
+  // claimed, the account already exists and removing the invite record
+  // wouldn't undo that. Deletes each known field individually rather
+  // than the parent /invites/{token} node in one call, since .write is
+  // only granted on the leaf fields, not the parent (same reason
+  // generateInvite() writes leaf paths instead of a single .set()).
+  function cancelInvite(token, invite) {
+    const updates = {};
+    updates['invites/' + token + '/mode'] = null;
+    updates['invites/' + token + '/createdBy'] = null;
+    updates['invites/' + token + '/createdAt'] = null;
+    if (invite.targetBarId) updates['invites/' + token + '/targetBarId'] = null;
+
+    window.railDB.ref().update(updates)
+      .then(() => renderInviteList())
+      .catch((err) => {
+        document.getElementById('invite-result').innerHTML =
+          '<p class="auth-message error">Failed to cancel invite: ' + esc(err.message) + '</p>';
+      });
   }
 
   function initAdminForm() {
