@@ -24,7 +24,7 @@
      style.css, since browsers and edge caches don't know a file changed
      just because index.html did (its own cache header is much shorter,
      which is why editing only index.html doesn't need this). -->
-<link rel="stylesheet" href="style.css?v=3">
+<link rel="stylesheet" href="style.css?v=4">
 </head>
 <body>
 
@@ -93,6 +93,17 @@
 
     <section id="section-add-bottle" class="panel-block">
       <h2 class="panel-heading">Add a Bottle</h2>
+
+      <div class="photo-scan-row">
+        <input id="bottle-photo-input" type="file" accept="image/*" capture="environment" style="display:none;">
+        <button type="button" id="scan-bottle-btn" class="btn-secondary">📷 Scan a Bottle Label</button>
+        <span id="scan-status" class="scan-status"></span>
+      </div>
+      <div id="bottle-photo-preview" class="bottle-photo-preview" style="display:none;">
+        <img id="bottle-photo-img" alt="Scanned bottle">
+        <button type="button" id="remove-photo-btn" class="icon-btn" aria-label="Remove photo">✕</button>
+      </div>
+
       <form id="add-bottle-form" class="add-form">
         <input id="bottle-name" type="text" placeholder="e.g. Buffalo Trace Bourbon" autocomplete="off" maxlength="100" required>
         <select id="bottle-category" required></select>
@@ -188,8 +199,12 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-<script src="firebase-config.js?v=3"></script>
-<script src="cocktails.js?v=3"></script>
-<script src="app.js?v=3"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
+<!-- On-device OCR for the bottle-label scanner — only actually downloads
+     its ~10MB WASM/language data when a scan is run, not on page load. -->
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+<script src="firebase-config.js?v=4"></script>
+<script src="cocktails.js?v=4"></script>
+<script src="app.js?v=4"></script>
 </body>
 </html>

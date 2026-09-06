@@ -28,6 +28,8 @@
   let booted = false;
   let pendingInviteToken = null;
   let signupInProgress = false;
+  let pendingPhotoFile = null;
+  let ocrWorker = null;
 
   // ── Storage adapter: Firebase when configured, localStorage fallback ─
   const Store = (function () {
@@ -121,6 +123,31 @@
           lsSet('rail_bottles', all);
           bottleCb && bottleCb(all);
         }
+      },
+      updateBottlePhoto(id, url) {
+        if (useFirebase) {
+          window.railDB.ref(barPath() + '/bottles/' + id + '/photoUrl').set(url);
+        } else {
+          const all = lsGet('rail_bottles');
+          if (all[id]) all[id].photoUrl = url;
+          lsSet('rail_bottles', all);
+          bottleCb && bottleCb(all);
+        }
+      },
+      // Firebase mode: real upload to Storage, returns the download URL.
+      // Local mode (no Firebase): embeds the photo directly as a data URI
+      // on the bottle record — fine for testing, not meant for production
+      // use at scale, but keeps the feature usable without Firebase too.
+      async uploadBottlePhoto(file) {
+        if (useFirebase && window.railStorage) {
+          const ext = (file.type && file.type.split('/')[1]) || 'jpg';
+          const owner = authUser ? authUser.uid : 'anon';
+          const path = 'bottle-photos/' + owner + '/' + Date.now() + '_' + Math.random().toString(36).slice(2) + '.' + ext;
+          const ref = window.railStorage.ref(path);
+          await ref.put(file);
+          return await ref.getDownloadURL();
+        }
+        return await readFileAsDataUrl(file);
       },
       updateBottleCategory(id, category) {
         if (useFirebase) {
@@ -534,9 +561,17 @@
     const li = document.createElement('li');
     li.className = 'bottle-row level-' + bottle.level;
 
-    // ── Name row: display name + edit toggle ──
+    // ── Name row: photo thumbnail + display name + edit toggle ──
     const nameRow = document.createElement('div');
     nameRow.className = 'bottle-name-row';
+
+    if (bottle.photoUrl) {
+      const thumb = document.createElement('img');
+      thumb.className = 'bottle-thumb';
+      thumb.src = bottle.photoUrl;
+      thumb.alt = bottle.name;
+      nameRow.appendChild(thumb);
+    }
 
     const nameWrap = document.createElement('div');
     nameWrap.className = 'bottle-name-wrap';
@@ -627,6 +662,14 @@
       Store.setBottleRestricted(bottle.id, !bottle.restricted);
     });
 
+    const photoBtn = document.createElement('button');
+    photoBtn.className = 'icon-btn photo-btn';
+    photoBtn.type = 'button';
+    photoBtn.textContent = '📷';
+    photoBtn.title = bottle.photoUrl ? 'Change photo' : 'Add a photo';
+    photoBtn.setAttribute('aria-label', (bottle.photoUrl ? 'Change' : 'Add') + ' photo for ' + bottle.name);
+    photoBtn.addEventListener('click', () => openBottlePhotoPicker(bottle.id));
+
     const removeBtn = document.createElement('button');
     removeBtn.className = 'icon-btn remove-btn';
     removeBtn.type = 'button';
@@ -639,6 +682,7 @@
     });
 
     actions.appendChild(levelBtn);
+    actions.appendChild(photoBtn);
     actions.appendChild(lockBtn);
     actions.appendChild(removeBtn);
     controlsRow.appendChild(qtyStepper);
@@ -1035,7 +1079,7 @@
   // ── Form handlers ──────────────────────────────────────────────────
   function initForm() {
     const form = document.getElementById('add-bottle-form');
-    form.addEventListener('submit', (e) => {
+    form.addEventListener('submit', async (e) => {
       e.preventDefault();
       const nameInput = document.getElementById('bottle-name');
       const categorySelect = document.getElementById('bottle-category');
@@ -1043,11 +1087,24 @@
       const name = nameInput.value.trim();
       const origin = originInput.value.trim();
       if (!name) return;
-      Store.addBottle({ name, category: categorySelect.value, level: 'full', quantity: 1, origin });
+
+      const bottle = { name, category: categorySelect.value, level: 'full', quantity: 1, origin };
+      if (pendingPhotoFile) {
+        try {
+          bottle.photoUrl = await Store.uploadBottlePhoto(pendingPhotoFile);
+        } catch (err) {
+          console.warn('[The Rail] photo upload failed:', err.message);
+        }
+      }
+      Store.addBottle(bottle);
+
       nameInput.value = '';
       originInput.value = '';
+      resetPhotoScan();
       nameInput.focus();
     });
+
+    initPhotoScan();
 
     const categorySelect = document.getElementById('bottle-category');
     R.CATEGORIES.forEach((c) => {
@@ -1113,6 +1170,107 @@
     });
 
     initAdminForm();
+  }
+
+  // ── Photo scan (bottle label → photo + on-device OCR name guess) ────
+  function readFileAsDataUrl(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = () => reject(reader.error || new Error('Could not read file'));
+      reader.readAsDataURL(file);
+    });
+  }
+
+  // Tesseract's WASM engine + language data (~10MB) only downloads the
+  // first time this runs, not on page load — the worker is reused after.
+  async function getOcrWorker() {
+    if (!ocrWorker) ocrWorker = await Tesseract.createWorker('eng');
+    return ocrWorker;
+  }
+
+  async function runOcr(file) {
+    const worker = await getOcrWorker();
+    const { data } = await worker.recognize(file);
+    return data.text || '';
+  }
+
+  // Raw OCR output is messy multi-line text (subtitle copy, volume/ABV
+  // numbers, etc). Heuristic: bottle labels conventionally put the
+  // brand name at or near the top in the largest font, and Tesseract
+  // returns text roughly in reading order — so prefer the FIRST
+  // substantial line, not the longest one (the longest line is usually
+  // descriptive subtitle text, e.g. "KENTUCKY STRAIGHT BOURBON WHISKEY"
+  // under "BUFFALO TRACE", which is exactly backwards from what we want).
+  function guessNameFromOcrText(text) {
+    const lines = String(text || '').split('\n').map((l) => l.trim()).filter((l) => l.length >= 3);
+    if (lines.length === 0) return '';
+    const candidate = lines.find((l) => l.length <= 40) || lines[0];
+    return candidate.replace(/[^\w .,'&-]/g, '').replace(/\s+/g, ' ').trim();
+  }
+
+  function initPhotoScan() {
+    const scanBtn = document.getElementById('scan-bottle-btn');
+    const photoInput = document.getElementById('bottle-photo-input');
+    const preview = document.getElementById('bottle-photo-preview');
+    const previewImg = document.getElementById('bottle-photo-img');
+    const removeBtn = document.getElementById('remove-photo-btn');
+    const statusEl = document.getElementById('scan-status');
+
+    scanBtn.addEventListener('click', () => photoInput.click());
+
+    photoInput.addEventListener('change', async () => {
+      const file = photoInput.files && photoInput.files[0];
+      if (!file) return;
+      pendingPhotoFile = file;
+
+      const dataUrl = await readFileAsDataUrl(file);
+      previewImg.src = dataUrl;
+      preview.style.display = 'flex';
+
+      statusEl.textContent = 'Reading label…';
+      try {
+        const text = await runOcr(file);
+        const guess = guessNameFromOcrText(text);
+        const nameInput = document.getElementById('bottle-name');
+        if (guess && !nameInput.value.trim()) nameInput.value = guess;
+        statusEl.textContent = guess ? 'Got it — check the name below.' : "Couldn't read the label — type the name manually.";
+      } catch (err) {
+        statusEl.textContent = "Couldn't read the label — type the name manually.";
+      }
+    });
+
+    removeBtn.addEventListener('click', () => resetPhotoScan());
+  }
+
+  function resetPhotoScan() {
+    pendingPhotoFile = null;
+    const photoInput = document.getElementById('bottle-photo-input');
+    if (photoInput) photoInput.value = '';
+    const preview = document.getElementById('bottle-photo-preview');
+    if (preview) preview.style.display = 'none';
+    const statusEl = document.getElementById('scan-status');
+    if (statusEl) statusEl.textContent = '';
+  }
+
+  // Add/replace a photo on an already-existing bottle — a fresh file
+  // input per call, since this can be triggered from any bottle row.
+  function openBottlePhotoPicker(bottleId) {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.capture = 'environment';
+    input.addEventListener('change', async () => {
+      const file = input.files && input.files[0];
+      if (!file) return;
+      try {
+        const url = await Store.uploadBottlePhoto(file);
+        Store.updateBottlePhoto(bottleId, url);
+      } catch (err) {
+        alert('Could not upload photo: ' + err.message);
+      }
+    });
+    input.click();
   }
 
   // ── Auth ────────────────────────────────────────────────────────────

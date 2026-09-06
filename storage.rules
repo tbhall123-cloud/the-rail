@@ -1,0 +1,18 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Storage rules can't cross-reference Realtime Database (no root.child()
+    // equivalent), so true per-bar isolation isn't achievable here without a
+    // backend. Pragmatic model instead: any signed-in user can read any
+    // bottle photo (labels aren't sensitive, and download URLs carry an
+    // unguessable token), but you can only write/delete your own uploads.
+    match /bottle-photos/{uid}/{fileName} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null
+                   && request.auth.uid == uid
+                   && request.resource.size < 5 * 1024 * 1024
+                   && request.resource.contentType.matches('image/.*');
+      allow delete: if request.auth != null && request.auth.uid == uid;
+    }
+  }
+}

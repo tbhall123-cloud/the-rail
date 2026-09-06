@@ -81,6 +81,7 @@
             "quantity": { ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 999" },
             "origin": { ".validate": "newData.isString() && newData.val().length <= 200" },
             "restricted": { ".validate": "newData.isBoolean()" },
+            "photoUrl": { ".validate": "newData.isString() && newData.val().length <= 600" },
             "$other": { ".validate": false }
           }
         },
