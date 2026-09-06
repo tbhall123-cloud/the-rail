@@ -1259,8 +1259,16 @@
     return topTier.map((l) => l.text).join(' ').trim();
   }
 
+  // Only ever surfaces what's literally printed on the label (no
+  // real-world knowledge of where a distillery/winery actually is —
+  // that would need true AI vision, deliberately not built here to
+  // stay free/backend-free). Covers the common phrasings; a label with
+  // no such phrase at all (just a bare place name, or nothing) won't
+  // match, and the Origin field is left for manual entry as before.
   function guessOriginFromOcrText(text) {
-    const match = String(text || '').match(/(?:product of|made in|distilled in)\s+([a-z][a-z .'-]{2,30})/i);
+    const match = String(text || '').match(
+      /(?:product of|a product of|made in|distilled in|distilled and bottled in|produced in|produced and bottled in|imported from|bottled in|est(?:ablished)?\.?\s+in)\s+([a-z][a-z .,'-]{2,40})/i
+    );
     return match ? cleanOcrFragment(match[1]) : '';
   }
 
