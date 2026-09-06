@@ -566,6 +566,7 @@
       thumb.className = 'bottle-thumb';
       thumb.src = bottle.photoUrl;
       thumb.alt = bottle.name;
+      thumb.addEventListener('click', () => openPhotoLightbox(bottle.photoUrl, bottle.name));
       nameRow.appendChild(thumb);
     }
 
@@ -1101,6 +1102,7 @@
     });
 
     initPhotoScan();
+    initPhotoLightbox();
 
     const categorySelect = document.getElementById('bottle-category');
     R.CATEGORIES.forEach((c) => {
@@ -1340,6 +1342,34 @@
       }
     });
     input.click();
+  }
+
+  // ── Photo lightbox (tap a bottle thumbnail to see it larger) ─────────
+  function openPhotoLightbox(url, label) {
+    const lightbox = document.getElementById('photo-lightbox');
+    const img = document.getElementById('photo-lightbox-img');
+    if (!lightbox || !img) return;
+    img.src = url;
+    img.alt = label || '';
+    lightbox.classList.add('visible');
+  }
+
+  function closePhotoLightbox() {
+    const lightbox = document.getElementById('photo-lightbox');
+    if (lightbox) lightbox.classList.remove('visible');
+  }
+
+  function initPhotoLightbox() {
+    const lightbox = document.getElementById('photo-lightbox');
+    const closeBtn = document.getElementById('photo-lightbox-close');
+    if (!lightbox || !closeBtn) return;
+    closeBtn.addEventListener('click', closePhotoLightbox);
+    lightbox.addEventListener('click', (e) => {
+      if (e.target === lightbox) closePhotoLightbox();
+    });
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closePhotoLightbox();
+    });
   }
 
   // ── Auth ────────────────────────────────────────────────────────────
