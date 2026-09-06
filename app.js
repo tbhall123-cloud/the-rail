@@ -138,16 +138,12 @@
       // Local mode (no Firebase): embeds the photo directly as a data URI
       // on the bottle record — fine for testing, not meant for production
       // use at scale, but keeps the feature usable without Firebase too.
+      // Firebase Storage requires the paid Blaze plan just to create a
+      // bucket, so it's skipped entirely — photos are resized/compressed
+      // client-side and embedded directly as a data URI in the (free)
+      // Realtime Database instead, same in both Firebase and local mode.
       async uploadBottlePhoto(file) {
-        if (useFirebase && window.railStorage) {
-          const ext = (file.type && file.type.split('/')[1]) || 'jpg';
-          const owner = authUser ? authUser.uid : 'anon';
-          const path = 'bottle-photos/' + owner + '/' + Date.now() + '_' + Math.random().toString(36).slice(2) + '.' + ext;
-          const ref = window.railStorage.ref(path);
-          await ref.put(file);
-          return await ref.getDownloadURL();
-        }
-        return await readFileAsDataUrl(file);
+        return await compressImageToDataUrl(file, 500, 0.7);
       },
       updateBottleCategory(id, category) {
         if (useFirebase) {
@@ -1179,6 +1175,38 @@
       reader.onload = () => resolve(reader.result);
       reader.onerror = () => reject(reader.error || new Error('Could not read file'));
       reader.readAsDataURL(file);
+    });
+  }
+
+  // Downscales to maxDimension on the longer side and re-encodes as JPEG
+  // at the given quality, keeping the resulting data URI small enough to
+  // embed directly in the Realtime Database (a raw phone photo can be
+  // several MB; this typically lands in the tens of KB).
+  function compressImageToDataUrl(file, maxDimension, quality) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      const objectUrl = URL.createObjectURL(file);
+      img.onload = () => {
+        URL.revokeObjectURL(objectUrl);
+        let { width, height } = img;
+        if (width >= height && width > maxDimension) {
+          height = Math.round(height * (maxDimension / width));
+          width = maxDimension;
+        } else if (height > width && height > maxDimension) {
+          width = Math.round(width * (maxDimension / height));
+          height = maxDimension;
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.onerror = () => {
+        URL.revokeObjectURL(objectUrl);
+        reject(new Error('Could not load image'));
+      };
+      img.src = objectUrl;
     });
   }
 

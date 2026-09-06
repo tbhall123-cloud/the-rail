@@ -7,15 +7,17 @@
 //     → choose a region → Start in TEST MODE → Enable
 //  4. In the left menu: Build → Authentication → Get started →
 //     enable the "Email/Password" sign-in provider
-//  5. In the left menu: Build → Storage → Get started (for bottle photos)
-//  6. In the left menu: Project settings (gear icon) → Your apps
+//  5. In the left menu: Project settings (gear icon) → Your apps
 //     → click the </> web icon → register app → copy the firebaseConfig
-//  7. Paste the values from that config into the fields below
-//  8. Go to Realtime Database → Rules and paste the contents of
+//  6. Paste the values from that config into the fields below
+//  7. Go to Realtime Database → Rules and paste the contents of
 //     database.rules.json from this repo, then click Publish
-//  9. Go to Storage → Rules and paste the contents of storage.rules
-//     from this repo, then click Publish
-//  10. Save this file — the app updates automatically
+//  8. Save this file — the app updates automatically
+//
+//  Bottle photos are compressed client-side and embedded directly in
+//  the Realtime Database, not Firebase Storage — Storage now requires
+//  the paid Blaze plan just to create a bucket, so it's skipped
+//  entirely to keep this project free.
 //
 // ────────────────────────────────────────────────────────────────────
 
@@ -44,12 +46,10 @@ const firebaseConfig = {
     if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
     window.railDB = firebase.database();
     window.railAuth = firebase.auth();
-    window.railStorage = firebase.storage();
     console.log('[The Rail] Firebase connected ✓');
   } catch (e) {
     window.railDB = null;
     window.railAuth = null;
-    window.railStorage = null;
     console.warn('[The Rail] Firebase init failed:', e.message);
   }
 

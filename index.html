@@ -24,7 +24,7 @@
      style.css, since browsers and edge caches don't know a file changed
      just because index.html did (its own cache header is much shorter,
      which is why editing only index.html doesn't need this). -->
-<link rel="stylesheet" href="style.css?v=4">
+<link rel="stylesheet" href="style.css?v=5">
 </head>
 <body>
 
@@ -199,12 +199,15 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
+<!-- No firebase-storage-compat.js — Firebase Storage now requires the
+     paid Blaze plan just to create a bucket, so bottle photos are
+     compressed client-side and embedded directly in the (free)
+     Realtime Database instead. See Store.uploadBottlePhoto in app.js. -->
 <!-- On-device OCR for the bottle-label scanner — only actually downloads
      its ~10MB WASM/language data when a scan is run, not on page load. -->
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
-<script src="firebase-config.js?v=4"></script>
-<script src="cocktails.js?v=4"></script>
-<script src="app.js?v=4"></script>
+<script src="firebase-config.js?v=5"></script>
+<script src="cocktails.js?v=5"></script>
+<script src="app.js?v=5"></script>
 </body>
 </html>
