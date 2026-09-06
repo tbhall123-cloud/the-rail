@@ -1220,21 +1220,48 @@
   async function runOcr(file) {
     const worker = await getOcrWorker();
     const { data } = await worker.recognize(file);
-    return data.text || '';
+    return { text: data.text || '', lines: data.lines || [] };
   }
 
-  // Raw OCR output is messy multi-line text (subtitle copy, volume/ABV
-  // numbers, etc). Heuristic: bottle labels conventionally put the
-  // brand name at or near the top in the largest font, and Tesseract
-  // returns text roughly in reading order — so prefer the FIRST
-  // substantial line, not the longest one (the longest line is usually
-  // descriptive subtitle text, e.g. "KENTUCKY STRAIGHT BOURBON WHISKEY"
-  // under "BUFFALO TRACE", which is exactly backwards from what we want).
-  function guessNameFromOcrText(text) {
-    const lines = String(text || '').split('\n').map((l) => l.trim()).filter((l) => l.length >= 3);
-    if (lines.length === 0) return '';
-    const candidate = lines.find((l) => l.length <= 40) || lines[0];
-    return candidate.replace(/[^\w .,'&-]/g, '').replace(/\s+/g, ' ').trim();
+  function cleanOcrFragment(s) {
+    return String(s || '').replace(/[^\w .,'&-]/g, '').replace(/\s+/g, ' ').trim();
+  }
+
+  // A full bottle photo (not a tight crop of just the label) includes
+  // the neck, cap, and background — a first-line-in-reading-order guess
+  // reliably grabs tiny, hard-to-read wrapped text up there instead of
+  // the actual brand name. Font SIZE is a much more reliable signal:
+  // brand names are conventionally the largest text on a label
+  // regardless of where they sit, and Tesseract's per-line bounding
+  // boxes measure that directly, rather than guessing from position.
+  function guessNameFromOcrLines(lines) {
+    const candidates = (lines || [])
+      .map((l, idx) => ({
+        text: cleanOcrFragment(l.text),
+        height: l.bbox ? l.bbox.y1 - l.bbox.y0 : 0,
+        confidence: l.confidence || 0,
+        idx,
+      }))
+      .filter((l) => l.text.length >= 2 && l.confidence >= 40);
+    if (candidates.length === 0) return '';
+
+    // Brand names sometimes wrap across two label lines at the same
+    // large font size (e.g. "AUCHEN" / "TOSHAN") — merge every line
+    // within 25% of the tallest one, in original top-to-bottom order,
+    // rather than just the single tallest line. Capped at 3 so this
+    // can't run away and merge unrelated same-sized text blocks.
+    const maxHeight = Math.max(...candidates.map((l) => l.height));
+    const topTier = candidates
+      .filter((l) => l.height >= maxHeight * 0.75)
+      .sort((a, b) => a.idx - b.idx)
+      .slice(0, 3);
+
+    return topTier.map((l) => l.text).join(' ').trim();
+  }
+
+  function guessOriginFromOcrText(text) {
+    const match = String(text || '').match(/(?:product of|made in|distilled in)\s+([a-z][a-z .'-]{2,30})/i);
+    return match ? cleanOcrFragment(match[1]) : '';
   }
 
   function initPhotoScan() {
@@ -1258,11 +1285,17 @@
 
       statusEl.textContent = 'Reading label…';
       try {
-        const text = await runOcr(file);
-        const guess = guessNameFromOcrText(text);
+        const { text, lines } = await runOcr(file);
+        const nameGuess = guessNameFromOcrLines(lines);
+        const originGuess = guessOriginFromOcrText(text);
+
         const nameInput = document.getElementById('bottle-name');
-        if (guess && !nameInput.value.trim()) nameInput.value = guess;
-        statusEl.textContent = guess ? 'Got it — check the name below.' : "Couldn't read the label — type the name manually.";
+        if (nameGuess && !nameInput.value.trim()) nameInput.value = nameGuess;
+
+        const originInput = document.getElementById('bottle-origin');
+        if (originGuess && !originInput.value.trim()) originInput.value = originGuess;
+
+        statusEl.textContent = nameGuess ? 'Got it — check the name below.' : "Couldn't read the label — type the name manually.";
       } catch (err) {
         statusEl.textContent = "Couldn't read the label — type the name manually.";
       }
