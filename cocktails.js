@@ -509,6 +509,7 @@
     DEFAULT_MIXERS,
     CURATED_RECIPES,
     COCKTAILDB_TERMS,
+    CATEGORY_GROUPS,
     classifyIngredient,
     hasMixer,
     isGarnish,

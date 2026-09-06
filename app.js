@@ -15,6 +15,7 @@
   let lastDiscoveryKey = '';
   let inventorySearchQuery = '';
   let suggestionsSearchQuery = '';
+  let currentDetailBottleId = null;
 
   // Set once auth resolves to 'bars/{barId}' for the signed-in user's bar.
   // Store methods read this via barPath() at call time, not at Store
@@ -120,6 +121,16 @@
         } else {
           const all = lsGet('rail_bottles');
           if (all[id]) all[id].origin = origin;
+          lsSet('rail_bottles', all);
+          bottleCb && bottleCb(all);
+        }
+      },
+      updateBottleDescription(id, description) {
+        if (useFirebase) {
+          window.railDB.ref(barPath() + '/bottles/' + id + '/description').set(description);
+        } else {
+          const all = lsGet('rail_bottles');
+          if (all[id]) all[id].description = description;
           lsSet('rail_bottles', all);
           bottleCb && bottleCb(all);
         }
@@ -381,6 +392,7 @@
       discoveryInFlight = false;
       setSyncStatus('');
       renderSuggestions();
+      refreshBottleDetailIfOpen();
     }
   }
 
@@ -701,6 +713,8 @@
     const name = document.createElement('span');
     name.className = 'bottle-name';
     name.textContent = bottle.name;
+    name.title = 'Tap for details';
+    name.addEventListener('click', () => openBottleDetail(bottle));
 
     const editBtn = document.createElement('button');
     editBtn.type = 'button';
@@ -1103,6 +1117,7 @@
 
     initPhotoScan();
     initPhotoLightbox();
+    initBottleDetail();
 
     const categorySelect = document.getElementById('bottle-category');
     R.CATEGORIES.forEach((c) => {
@@ -1369,6 +1384,125 @@
     });
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') closePhotoLightbox();
+    });
+  }
+
+  // ── Bottle detail modal ───────────────────────────────────────────────
+  // Does this recipe requirement's category match the bottle's category —
+  // directly, or via CATEGORY_GROUPS aliasing (e.g. a Rye bottle also
+  // satisfies recipes that ask for "Whiskey").
+  function categoryMatchesBottle(reqCategory, bottleCategory) {
+    if (!reqCategory) return false;
+    if (reqCategory === bottleCategory) return true;
+    const group = R.CATEGORY_GROUPS && R.CATEGORY_GROUPS[reqCategory];
+    return !!(group && group.includes(bottleCategory));
+  }
+
+  // Recipes that call for this bottle's category, split into what's
+  // ready to make right now vs. what's still missing other ingredients —
+  // sorted fewest-missing-first within each group, capped to a handful.
+  function recipesForBottle(bottle) {
+    const curated = R.CURATED_RECIPES.map((r) => R.computeCuratedStatus(r, bottlesState, mixersState));
+    const discovered = discoveredRecipes.map((d) =>
+      R.computeDiscoveredStatus(d.name, d.ingredients, bottlesState, mixersState, d.instructions)
+    );
+    const custom = Object.entries(customRecipesState).map(([id, r]) =>
+      Object.assign(R.computeCustomStatus(r.name, r.ingredients, bottlesState, mixersState, r.instructions), { id })
+    );
+    const matches = curated.concat(discovered, custom).filter((r) =>
+      r.required.some((req) => categoryMatchesBottle(req.category, bottle.category))
+    );
+    matches.sort((a, b) => a.missing - b.missing || a.name.localeCompare(b.name));
+    return {
+      ready: matches.filter((r) => r.ready).slice(0, 4),
+      explore: matches.filter((r) => !r.ready).slice(0, 4),
+    };
+  }
+
+  function renderBottleDetailRecipes(bottle) {
+    const readyContainer = document.getElementById('bottle-detail-ready');
+    const exploreContainer = document.getElementById('bottle-detail-explore');
+    if (!readyContainer || !exploreContainer) return;
+
+    const { ready, explore } = recipesForBottle(bottle);
+
+    readyContainer.innerHTML = '';
+    if (ready.length === 0) {
+      readyContainer.innerHTML = '<p class="empty-state">Nothing ready yet with this bottle alone.</p>';
+    } else {
+      ready.forEach((r) => readyContainer.appendChild(renderRecipeCard(r)));
+    }
+
+    exploreContainer.innerHTML = '';
+    if (explore.length === 0) {
+      exploreContainer.innerHTML = '<p class="empty-state">No other matches found.</p>';
+    } else {
+      explore.forEach((r) => exploreContainer.appendChild(renderRecipeCard(r)));
+    }
+  }
+
+  function openBottleDetail(bottle) {
+    const modal = document.getElementById('bottle-detail-modal');
+    if (!modal) return;
+    const live = bottlesState[bottle.id] || bottle;
+    currentDetailBottleId = bottle.id;
+
+    const photo = document.getElementById('bottle-detail-photo');
+    if (live.photoUrl) {
+      photo.src = live.photoUrl;
+      photo.alt = live.name;
+      photo.style.display = '';
+    } else {
+      photo.style.display = 'none';
+    }
+
+    document.getElementById('bottle-detail-name').textContent = live.name;
+    const categoryLabel = R.CATEGORIES.find((c) => c.id === live.category)?.label || live.category;
+    const metaParts = [categoryLabel];
+    if (live.origin) metaParts.push(live.origin);
+    document.getElementById('bottle-detail-meta').textContent = metaParts.join(' · ');
+
+    document.getElementById('bottle-detail-description').value = live.description || '';
+
+    renderBottleDetailRecipes(live);
+    refreshDiscoveredIfNeeded();
+
+    modal.classList.add('visible');
+  }
+
+  function closeBottleDetail() {
+    const modal = document.getElementById('bottle-detail-modal');
+    if (modal) modal.classList.remove('visible');
+    currentDetailBottleId = null;
+  }
+
+  // Re-renders the open detail modal's dynamic bits when inventory/mixers/
+  // discovered recipes change elsewhere — leaves the description textarea
+  // alone so an in-progress edit is never clobbered.
+  function refreshBottleDetailIfOpen() {
+    if (!currentDetailBottleId) return;
+    const live = bottlesState[currentDetailBottleId];
+    if (!live) { closeBottleDetail(); return; }
+    renderBottleDetailRecipes(live);
+  }
+
+  function initBottleDetail() {
+    const modal = document.getElementById('bottle-detail-modal');
+    const closeBtn = document.getElementById('bottle-detail-close');
+    const saveBtn = document.getElementById('bottle-detail-save-description');
+    if (!modal || !closeBtn || !saveBtn) return;
+
+    closeBtn.addEventListener('click', closeBottleDetail);
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) closeBottleDetail();
+    });
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeBottleDetail();
+    });
+    saveBtn.addEventListener('click', () => {
+      if (!currentDetailBottleId) return;
+      const description = document.getElementById('bottle-detail-description').value.trim();
+      Store.updateBottleDescription(currentDetailBottleId, description);
     });
   }
 
@@ -1710,17 +1844,20 @@
       }
       if (activeTab === 'favorites') renderFavorites();
       if (activeTab === 'shopping') renderShoppingList();
+      refreshBottleDetailIfOpen();
     });
     Store.onMixers((mixers) => {
       mixersState = mixers || {};
       renderMixerChips();
       if (activeTab === 'suggestions') renderSuggestions();
       if (activeTab === 'favorites') renderFavorites();
+      refreshBottleDetailIfOpen();
     });
     Store.onCustomRecipes((recipes) => {
       customRecipesState = recipes || {};
       if (activeTab === 'suggestions') renderSuggestions();
       if (activeTab === 'favorites') renderFavorites();
+      refreshBottleDetailIfOpen();
     });
     Store.onFavorites((favorites) => {
       favoritesState = favorites || {};

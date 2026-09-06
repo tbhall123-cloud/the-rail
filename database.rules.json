@@ -82,6 +82,7 @@
             "origin": { ".validate": "newData.isString() && newData.val().length <= 200" },
             "restricted": { ".validate": "newData.isBoolean()" },
             "photoUrl": { ".validate": "newData.isString() && newData.val().length <= 200000" },
+            "description": { ".validate": "newData.isString() && newData.val().length <= 1000" },
             "$other": { ".validate": false }
           }
         },

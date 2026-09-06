@@ -24,7 +24,7 @@
      style.css, since browsers and edge caches don't know a file changed
      just because index.html did (its own cache header is much shorter,
      which is why editing only index.html doesn't need this). -->
-<link rel="stylesheet" href="style.css?v=7">
+<link rel="stylesheet" href="style.css?v=8">
 </head>
 <body>
 
@@ -201,6 +201,36 @@
   <img id="photo-lightbox-img" alt="">
 </div>
 
+<div id="bottle-detail-modal" class="bottle-detail-modal">
+  <div class="bottle-detail-card">
+    <button type="button" id="bottle-detail-close" class="photo-lightbox-close" aria-label="Close">✕</button>
+
+    <div class="bottle-detail-header">
+      <img id="bottle-detail-photo" class="bottle-detail-photo" alt="" style="display:none;">
+      <div class="bottle-detail-titles">
+        <h2 id="bottle-detail-name" class="bottle-detail-name"></h2>
+        <p id="bottle-detail-meta" class="bottle-detail-meta"></p>
+      </div>
+    </div>
+
+    <div class="bottle-detail-section">
+      <h3 class="panel-heading">Description</h3>
+      <textarea id="bottle-detail-description" rows="3" maxlength="1000" placeholder="Notes, tasting impressions, what to mix it with…"></textarea>
+      <button type="button" id="bottle-detail-save-description" class="btn-secondary">Save Description</button>
+    </div>
+
+    <div class="bottle-detail-section">
+      <h3 class="panel-heading">You Can Make Right Now</h3>
+      <div id="bottle-detail-ready" class="recipe-cards"></div>
+    </div>
+
+    <div class="bottle-detail-section">
+      <h3 class="panel-heading">Try Something New</h3>
+      <div id="bottle-detail-explore" class="recipe-cards"></div>
+    </div>
+  </div>
+</div>
+
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
@@ -212,7 +242,7 @@
      its ~10MB WASM/language data when a scan is run, not on page load. -->
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <script src="firebase-config.js?v=6"></script>
-<script src="cocktails.js?v=6"></script>
-<script src="app.js?v=8"></script>
+<script src="cocktails.js?v=7"></script>
+<script src="app.js?v=9"></script>
 </body>
 </html>
