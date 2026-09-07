@@ -52,7 +52,7 @@
       onBottles(cb) {
         bottleCb = cb;
         if (useFirebase) {
-          window.railDB.ref(barPath() + '/bottles').on('value', (snap) => cb(snap.val() || {}));
+          window.railDB.ref(barPath() + '/bottles').on('value', (snap) => cb(snap.val() || {}), handleSyncCancelled);
         } else {
           cb(lsGet('rail_bottles'));
         }
@@ -60,7 +60,7 @@
       onMixers(cb) {
         mixerCb = cb;
         if (useFirebase) {
-          window.railDB.ref(barPath() + '/mixers').on('value', (snap) => cb(snap.val() || {}));
+          window.railDB.ref(barPath() + '/mixers').on('value', (snap) => cb(snap.val() || {}), handleSyncCancelled);
         } else {
           cb(lsGet('rail_mixers'));
         }
@@ -200,7 +200,7 @@
       onCustomRecipes(cb) {
         recipeCb = cb;
         if (useFirebase) {
-          window.railDB.ref(barPath() + '/custom-recipes').on('value', (snap) => cb(snap.val() || {}));
+          window.railDB.ref(barPath() + '/custom-recipes').on('value', (snap) => cb(snap.val() || {}), handleSyncCancelled);
         } else {
           cb(lsGet('rail_custom_recipes'));
         }
@@ -228,7 +228,7 @@
       onFavorites(cb) {
         favoriteCb = cb;
         if (useFirebase) {
-          window.railDB.ref(barPath() + '/favorites').on('value', (snap) => cb(snap.val() || {}));
+          window.railDB.ref(barPath() + '/favorites').on('value', (snap) => cb(snap.val() || {}), handleSyncCancelled);
         } else {
           cb(lsGet('rail_favorites'));
         }
@@ -256,7 +256,7 @@
       onWishlist(cb) {
         wishlistCb = cb;
         if (useFirebase) {
-          window.railDB.ref(barPath() + '/wishlist').on('value', (snap) => cb(snap.val() || {}));
+          window.railDB.ref(barPath() + '/wishlist').on('value', (snap) => cb(snap.val() || {}), handleSyncCancelled);
         } else {
           cb(lsGet('rail_wishlist'));
         }
@@ -428,6 +428,20 @@
         ? "That didn't save — you may have lost access to this bar."
         : "That didn't save — check your connection and try again."
     );
+  }
+
+  // Fires when a live .on('value') listener gets forcibly cancelled —
+  // almost always because access to this bar was just revoked (e.g. an
+  // admin used "Remove Access") while the tab was still open. Unlike a
+  // failed write, this silently stops ALL future updates with no other
+  // signal, so it gets the persistent rules banner instead of a toast
+  // that would auto-dismiss before explaining why the app went stale.
+  function handleSyncCancelled(err) {
+    console.warn('[The Rail] live sync stopped:', err);
+    setSyncStatus('');
+    if (window.railShowRulesBanner) {
+      window.railShowRulesBanner("Lost access to this bar's data — you may have been removed, or rules changed.");
+    }
   }
 
   // ── Rendering: Inventory tab ───────────────────────────────────────
