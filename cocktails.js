@@ -47,9 +47,12 @@
     { id: 'grapefruit-juice',  name: 'Grapefruit Juice' },
     { id: 'simple-syrup',      name: 'Simple Syrup' },
     { id: 'cream',             name: 'Cream' },
-    { id: 'prosecco',          name: 'Prosecco' },
     { id: 'espresso',          name: 'Espresso' },
     { id: 'grenadine',         name: 'Grenadine' },
+    { id: 'lime-juice',        name: 'Lime Juice' },
+    { id: 'mint',              name: 'Mint' },
+    { id: 'red-bull',          name: 'Red Bull' },
+    { id: 'cocktail-cherries', name: 'Cocktail Cherries' },
   ];
 
   // ── Curated "house" recipes ────────────────────────────────────────
@@ -279,7 +282,6 @@
     'grapefruit-juice': ['grapefruit juice'],
     'simple-syrup':     ['simple syrup', 'sugar syrup', 'sugar', 'superfine sugar', 'powdered sugar'],
     'cream':            ['cream', 'heavy cream', 'half and half', 'milk', 'whipped cream'],
-    'prosecco':         ['prosecco'],
     'espresso':         ['espresso', 'coffee'],
     'grenadine':        ['grenadine'],
   };
