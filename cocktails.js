@@ -53,6 +53,15 @@
     { id: 'mint',              name: 'Mint' },
     { id: 'red-bull',          name: 'Red Bull' },
     { id: 'cocktail-cherries', name: 'Cocktail Cherries' },
+    // ids matching the exact strings CURATED_RECIPES already reference
+    // via { mixer: '...' } / { item: '...' } — the lookup in
+    // computeCuratedStatus keys off id === that literal string.
+    { id: 'peach puree',       name: 'Peach Puree' },
+    { id: 'olive',             name: 'Olive' },
+    { id: 'orange peel',       name: 'Orange Peel' },
+    { id: 'pineapple-juice',   name: 'Pineapple Juice' },
+    { id: 'cranberry-juice',   name: 'Cranberry Juice' },
+    { id: 'egg-white',         name: 'Egg White' },
   ];
 
   // ── Curated "house" recipes ────────────────────────────────────────
