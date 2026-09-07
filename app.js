@@ -1802,6 +1802,20 @@
           pill.textContent = 'Pending';
           actions.appendChild(pill);
 
+          const copyBtn = document.createElement('button');
+          copyBtn.type = 'button';
+          copyBtn.className = 'invite-copy-btn';
+          copyBtn.textContent = 'Copy Link';
+          copyBtn.setAttribute('aria-label', 'Copy invite link ' + token.slice(0, 8));
+          copyBtn.addEventListener('click', () => {
+            const link = window.location.origin + window.location.pathname + '?invite=' + token;
+            navigator.clipboard.writeText(link).then(() => {
+              copyBtn.textContent = 'Copied!';
+              setTimeout(() => { copyBtn.textContent = 'Copy Link'; }, 1500);
+            });
+          });
+          actions.appendChild(copyBtn);
+
           const cancelBtn = document.createElement('button');
           cancelBtn.type = 'button';
           cancelBtn.className = 'invite-cancel-btn';
@@ -1840,53 +1854,90 @@
         return;
       }
 
-      const list = document.createElement('ul');
-      list.className = 'invite-list-items';
-      entries.forEach(([uid, u]) => {
-        const li = document.createElement('li');
-        li.className = 'invite-list-item';
-
-        const info = document.createElement('span');
-        info.innerHTML =
-          esc(u.email || uid) + '<br><span class="invite-list-meta">Bar: ' + esc(u.barId || '—') + '</span>';
-        li.appendChild(info);
-
-        const actions = document.createElement('span');
-        actions.className = 'invite-list-actions';
-
-        if (u.role === 'admin') {
-          const pill = document.createElement('span');
-          pill.className = 'invite-status-pill admin';
-          pill.textContent = 'Admin';
-          actions.appendChild(pill);
-        }
-
-        if (u.email) {
-          const resetBtn = document.createElement('button');
-          resetBtn.type = 'button';
-          resetBtn.className = 'admin-reset-btn';
-          resetBtn.textContent = 'Send Password Reset';
-          resetBtn.setAttribute('aria-label', 'Send password reset to ' + u.email);
-          resetBtn.addEventListener('click', () => {
-            resetBtn.disabled = true;
-            resetBtn.textContent = 'Sending…';
-            window.railAuth.sendPasswordResetEmail(u.email)
-              .then(() => { resetBtn.textContent = 'Sent!'; })
-              .catch((err) => {
-                resetBtn.disabled = false;
-                resetBtn.textContent = 'Send Password Reset';
-                alert('Could not send reset email: ' + err.message);
-              });
-          });
-          actions.appendChild(resetBtn);
-        }
-
-        li.appendChild(actions);
-        list.appendChild(li);
+      // One extra read per distinct bar (not per user — a "join my bar"
+      // invite means several users can share the same barId) to show a
+      // bottle count next to each account, so the admin can tell an
+      // active bar from an empty one without opening it.
+      const barIds = [...new Set(entries.map(([, u]) => u.barId).filter(Boolean))];
+      Promise.all(
+        barIds.map((barId) =>
+          window.railDB.ref('bars/' + barId + '/bottles').once('value')
+            .then((s) => [barId, s.numChildren()])
+        )
+      ).then((counts) => {
+        const countMap = Object.fromEntries(counts);
+        renderAdminUserListRows(container, entries, countMap);
       });
-      container.innerHTML = '';
-      container.appendChild(list);
     });
+  }
+
+  function renderAdminUserListRows(container, entries, countMap) {
+    const list = document.createElement('ul');
+    list.className = 'invite-list-items';
+    entries.forEach(([uid, u]) => {
+      const li = document.createElement('li');
+      li.className = 'invite-list-item';
+
+      const barLabel = u.barId
+        ? 'Bar: ' + u.barId + ' · ' + (countMap[u.barId] ?? 0) + ' bottles'
+        : 'Bar: —';
+      const info = document.createElement('span');
+      info.innerHTML = esc(u.email || uid) + '<br><span class="invite-list-meta">' + esc(barLabel) + '</span>';
+      li.appendChild(info);
+
+      const actions = document.createElement('span');
+      actions.className = 'invite-list-actions';
+
+      if (u.role === 'admin') {
+        const pill = document.createElement('span');
+        pill.className = 'invite-status-pill admin';
+        pill.textContent = 'Admin';
+        actions.appendChild(pill);
+      }
+
+      if (u.email) {
+        const resetBtn = document.createElement('button');
+        resetBtn.type = 'button';
+        resetBtn.className = 'admin-reset-btn';
+        resetBtn.textContent = 'Send Password Reset';
+        resetBtn.setAttribute('aria-label', 'Send password reset to ' + u.email);
+        resetBtn.addEventListener('click', () => {
+          resetBtn.disabled = true;
+          resetBtn.textContent = 'Sending…';
+          window.railAuth.sendPasswordResetEmail(u.email)
+            .then(() => { resetBtn.textContent = 'Sent!'; })
+            .catch((err) => {
+              resetBtn.disabled = false;
+              resetBtn.textContent = 'Send Password Reset';
+              alert('Could not send reset email: ' + err.message);
+            });
+        });
+        actions.appendChild(resetBtn);
+      }
+
+      // Never offer to remove your own admin account from this screen —
+      // that would strand you outside your own bar on the next reload.
+      if (uid !== authUser.uid) {
+        const removeBtn = document.createElement('button');
+        removeBtn.type = 'button';
+        removeBtn.className = 'invite-cancel-btn';
+        removeBtn.textContent = 'Remove Access';
+        removeBtn.setAttribute('aria-label', 'Remove access for ' + (u.email || uid));
+        removeBtn.addEventListener('click', () => {
+          if (confirm('Remove access for "' + (u.email || uid) + '"? They\'ll be cut off from their bar and would need a new invite to rejoin.')) {
+            window.railDB.ref('users/' + uid).remove()
+              .then(() => renderAdminUserList())
+              .catch((err) => alert('Could not remove user: ' + err.message));
+          }
+        });
+        actions.appendChild(removeBtn);
+      }
+
+      li.appendChild(actions);
+      list.appendChild(li);
+    });
+    container.innerHTML = '';
+    container.appendChild(list);
   }
 
   // Cancelling only ever applies to pending (unclaimed) invites — once

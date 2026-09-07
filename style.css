@@ -1075,7 +1075,8 @@ body {
 
 .invite-status-pill.admin { color: var(--brass-bright); background: rgba(212,175,55,0.15); }
 
-.admin-reset-btn {
+.admin-reset-btn,
+.invite-copy-btn {
   background: none;
   border: 1px solid var(--walnut-600);
   color: var(--cream-dim);
@@ -1086,7 +1087,8 @@ body {
   cursor: pointer;
   white-space: nowrap;
 }
-.admin-reset-btn:hover { border-color: var(--brass); color: var(--brass-bright); }
+.admin-reset-btn:hover,
+.invite-copy-btn:hover { border-color: var(--brass); color: var(--brass-bright); }
 .admin-reset-btn:disabled { opacity: 0.6; cursor: default; }
 
 /* ── Responsive ─────────────────────────────────────────────────── */
