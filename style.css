@@ -431,6 +431,31 @@ body {
 .bottle-name { cursor: pointer; }
 .bottle-name:hover { color: var(--brass-bright); text-decoration: underline; }
 
+.error-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 1.5rem;
+  transform: translate(-50%, 10px);
+  z-index: 10000;
+  background: var(--red);
+  color: var(--cream);
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  padding: 0.7rem 1.1rem;
+  border-radius: 6px;
+  box-shadow: 0 6px 24px rgba(0,0,0,0.4);
+  max-width: calc(100vw - 2rem);
+  text-align: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.error-toast.visible {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
 .bottle-detail-modal {
   display: none;
   position: fixed;
@@ -713,14 +738,17 @@ body {
 }
 
 .qty-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   background: var(--walnut-900);
   border: 1px solid var(--walnut-600);
   color: var(--cream-dim);
   font-family: var(--font-mono);
   font-size: 0.85rem;
   font-weight: 600;
-  width: 1.6rem;
-  height: 1.6rem;
+  width: 2.2rem;
+  height: 2.2rem;
   line-height: 1;
   border-radius: 50%;
   cursor: pointer;
@@ -751,12 +779,16 @@ body {
 .level-pill.level-empty { color: var(--red);   border-color: var(--red);   background: rgba(181,84,74,0.1); }
 
 .icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   background: none;
   border: none;
   color: var(--cream-dim);
   cursor: pointer;
   font-size: 0.95rem;
-  padding: 0.2rem 0.3rem;
+  min-width: 2.5rem;
+  min-height: 2.5rem;
   line-height: 1;
 }
 .icon-btn:hover { color: var(--red); }

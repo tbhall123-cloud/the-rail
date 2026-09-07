@@ -67,7 +67,7 @@
       },
       addBottle(bottle) {
         if (useFirebase) {
-          window.railDB.ref(barPath() + '/bottles').push(bottle);
+          window.railDB.ref(barPath() + '/bottles').push(bottle).catch(handleWriteError);
         } else {
           const all = lsGet('rail_bottles');
           all['b_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7)] = bottle;
@@ -77,7 +77,7 @@
       },
       updateBottleLevel(id, level) {
         if (useFirebase) {
-          window.railDB.ref(barPath() + '/bottles/' + id + '/level').set(level);
+          window.railDB.ref(barPath() + '/bottles/' + id + '/level').set(level).catch(handleWriteError);
         } else {
           const all = lsGet('rail_bottles');
           if (all[id]) all[id].level = level;
@@ -87,7 +87,7 @@
       },
       removeBottle(id) {
         if (useFirebase) {
-          window.railDB.ref(barPath() + '/bottles/' + id).remove();
+          window.railDB.ref(barPath() + '/bottles/' + id).remove().catch(handleWriteError);
         } else {
           const all = lsGet('rail_bottles');
           delete all[id];
@@ -97,7 +97,7 @@
       },
       setBottleRestricted(id, restricted) {
         if (useFirebase) {
-          window.railDB.ref(barPath() + '/bottles/' + id + '/restricted').set(restricted);
+          window.railDB.ref(barPath() + '/bottles/' + id + '/restricted').set(restricted).catch(handleWriteError);
         } else {
           const all = lsGet('rail_bottles');
           if (all[id]) all[id].restricted = restricted;
@@ -107,7 +107,7 @@
       },
       updateBottleName(id, name) {
         if (useFirebase) {
-          window.railDB.ref(barPath() + '/bottles/' + id + '/name').set(name);
+          window.railDB.ref(barPath() + '/bottles/' + id + '/name').set(name).catch(handleWriteError);
         } else {
           const all = lsGet('rail_bottles');
           if (all[id]) all[id].name = name;
@@ -117,7 +117,7 @@
       },
       updateBottleOrigin(id, origin) {
         if (useFirebase) {
-          window.railDB.ref(barPath() + '/bottles/' + id + '/origin').set(origin);
+          window.railDB.ref(barPath() + '/bottles/' + id + '/origin').set(origin).catch(handleWriteError);
         } else {
           const all = lsGet('rail_bottles');
           if (all[id]) all[id].origin = origin;
@@ -127,17 +127,18 @@
       },
       updateBottleDescription(id, description) {
         if (useFirebase) {
-          window.railDB.ref(barPath() + '/bottles/' + id + '/description').set(description);
+          return window.railDB.ref(barPath() + '/bottles/' + id + '/description').set(description);
         } else {
           const all = lsGet('rail_bottles');
           if (all[id]) all[id].description = description;
           lsSet('rail_bottles', all);
           bottleCb && bottleCb(all);
+          return Promise.resolve();
         }
       },
       updateBottlePhoto(id, url) {
         if (useFirebase) {
-          window.railDB.ref(barPath() + '/bottles/' + id + '/photoUrl').set(url);
+          window.railDB.ref(barPath() + '/bottles/' + id + '/photoUrl').set(url).catch(handleWriteError);
         } else {
           const all = lsGet('rail_bottles');
           if (all[id]) all[id].photoUrl = url;
@@ -158,7 +159,7 @@
       },
       updateBottleCategory(id, category) {
         if (useFirebase) {
-          window.railDB.ref(barPath() + '/bottles/' + id + '/category').set(category);
+          window.railDB.ref(barPath() + '/bottles/' + id + '/category').set(category).catch(handleWriteError);
         } else {
           const all = lsGet('rail_bottles');
           if (all[id]) all[id].category = category;
@@ -168,7 +169,7 @@
       },
       updateBottleQuantity(id, quantity) {
         if (useFirebase) {
-          window.railDB.ref(barPath() + '/bottles/' + id + '/quantity').set(quantity);
+          window.railDB.ref(barPath() + '/bottles/' + id + '/quantity').set(quantity).catch(handleWriteError);
         } else {
           const all = lsGet('rail_bottles');
           if (all[id]) all[id].quantity = quantity;
@@ -178,7 +179,7 @@
       },
       setMixer(id, data) {
         if (useFirebase) {
-          window.railDB.ref(barPath() + '/mixers/' + id).update(data);
+          window.railDB.ref(barPath() + '/mixers/' + id).update(data).catch(handleWriteError);
         } else {
           const all = lsGet('rail_mixers');
           all[id] = Object.assign({}, all[id], data);
@@ -188,7 +189,7 @@
       },
       removeMixer(id) {
         if (useFirebase) {
-          window.railDB.ref(barPath() + '/mixers/' + id).remove();
+          window.railDB.ref(barPath() + '/mixers/' + id).remove().catch(handleWriteError);
         } else {
           const all = lsGet('rail_mixers');
           delete all[id];
@@ -206,7 +207,7 @@
       },
       addCustomRecipe(recipe) {
         if (useFirebase) {
-          window.railDB.ref(barPath() + '/custom-recipes').push(recipe);
+          window.railDB.ref(barPath() + '/custom-recipes').push(recipe).catch(handleWriteError);
         } else {
           const all = lsGet('rail_custom_recipes');
           all['r_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7)] = recipe;
@@ -216,7 +217,7 @@
       },
       removeCustomRecipe(id) {
         if (useFirebase) {
-          window.railDB.ref(barPath() + '/custom-recipes/' + id).remove();
+          window.railDB.ref(barPath() + '/custom-recipes/' + id).remove().catch(handleWriteError);
         } else {
           const all = lsGet('rail_custom_recipes');
           delete all[id];
@@ -234,7 +235,7 @@
       },
       setFavorite(key, data) {
         if (useFirebase) {
-          window.railDB.ref(barPath() + '/favorites/' + key).set(data);
+          window.railDB.ref(barPath() + '/favorites/' + key).set(data).catch(handleWriteError);
         } else {
           const all = lsGet('rail_favorites');
           all[key] = data;
@@ -244,7 +245,7 @@
       },
       removeFavorite(key) {
         if (useFirebase) {
-          window.railDB.ref(barPath() + '/favorites/' + key).remove();
+          window.railDB.ref(barPath() + '/favorites/' + key).remove().catch(handleWriteError);
         } else {
           const all = lsGet('rail_favorites');
           delete all[key];
@@ -262,7 +263,7 @@
       },
       addWishlistItem(item) {
         if (useFirebase) {
-          window.railDB.ref(barPath() + '/wishlist').push(item);
+          window.railDB.ref(barPath() + '/wishlist').push(item).catch(handleWriteError);
         } else {
           const all = lsGet('rail_wishlist');
           all['w_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7)] = item;
@@ -272,7 +273,7 @@
       },
       removeWishlistItem(id) {
         if (useFirebase) {
-          window.railDB.ref(barPath() + '/wishlist/' + id).remove();
+          window.railDB.ref(barPath() + '/wishlist/' + id).remove().catch(handleWriteError);
         } else {
           const all = lsGet('rail_wishlist');
           delete all[id];
@@ -399,6 +400,34 @@
   function setSyncStatus(text) {
     const el = document.getElementById('sync-status');
     if (el) el.textContent = text;
+  }
+
+  // Every Firebase write in Store is fired-and-forgotten by its caller —
+  // this is the one place that catches a failure (revoked access, a
+  // dropped connection, a rules mismatch) and actually tells the user,
+  // instead of the UI just silently not updating with no explanation.
+  let errorToastTimer = null;
+  function showErrorToast(message) {
+    let toast = document.getElementById('rail-error-toast');
+    if (!toast) {
+      toast = document.createElement('div');
+      toast.id = 'rail-error-toast';
+      toast.className = 'error-toast';
+      document.body.appendChild(toast);
+    }
+    toast.textContent = message;
+    toast.classList.add('visible');
+    clearTimeout(errorToastTimer);
+    errorToastTimer = setTimeout(() => toast.classList.remove('visible'), 4000);
+  }
+
+  function handleWriteError(err) {
+    console.warn('[The Rail] write failed:', err);
+    showErrorToast(
+      err && err.code === 'PERMISSION_DENIED'
+        ? "That didn't save — you may have lost access to this bar."
+        : "That didn't save — check your connection and try again."
+    );
   }
 
   // ── Rendering: Inventory tab ───────────────────────────────────────
@@ -1064,9 +1093,12 @@
   // ── Tabs & filters ──────────────────────────────────────────────────
   function switchTab(tab) {
     activeTab = tab;
-    document.querySelectorAll('.tab-btn').forEach((b) =>
-      b.classList.toggle('active', b.dataset.tab === tab)
-    );
+    document.querySelectorAll('.tab-btn').forEach((b) => {
+      const selected = b.dataset.tab === tab;
+      b.classList.toggle('active', selected);
+      b.setAttribute('aria-selected', String(selected));
+      b.tabIndex = selected ? 0 : -1;
+    });
     document.querySelectorAll('.tab-panel').forEach((p) =>
       p.classList.toggle('active', p.id === 'tab-' + tab)
     );
@@ -1172,6 +1204,17 @@
     document.querySelectorAll('.tab-btn').forEach((btn) =>
       btn.addEventListener('click', () => switchTab(btn.dataset.tab))
     );
+    document.querySelector('.tab-bar').addEventListener('keydown', (e) => {
+      if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+      const tabs = [...document.querySelectorAll('.tab-btn')].filter((b) => b.style.display !== 'none');
+      const currentIdx = tabs.findIndex((b) => b.dataset.tab === activeTab);
+      if (currentIdx === -1) return;
+      e.preventDefault();
+      const delta = e.key === 'ArrowRight' ? 1 : -1;
+      const next = tabs[(currentIdx + delta + tabs.length) % tabs.length];
+      switchTab(next.dataset.tab);
+      next.focus();
+    });
     document.querySelectorAll('.filter-btn').forEach((btn) =>
       btn.addEventListener('click', () => switchFilter(btn.dataset.filter))
     );
@@ -1494,6 +1537,7 @@
     const closeBtn = document.getElementById('bottle-detail-close');
     const saveBtn = document.getElementById('bottle-detail-save-description');
     if (!modal || !closeBtn || !saveBtn) return;
+    const saveBtnDefaultLabel = saveBtn.textContent;
 
     closeBtn.addEventListener('click', closeBottleDetail);
     modal.addEventListener('click', (e) => {
@@ -1505,7 +1549,17 @@
     saveBtn.addEventListener('click', () => {
       if (!currentDetailBottleId) return;
       const description = document.getElementById('bottle-detail-description').value.trim();
-      Store.updateBottleDescription(currentDetailBottleId, description);
+      saveBtn.disabled = true;
+      Promise.resolve(Store.updateBottleDescription(currentDetailBottleId, description))
+        .then(() => {
+          saveBtn.textContent = 'Saved!';
+          setTimeout(() => { saveBtn.textContent = saveBtnDefaultLabel; saveBtn.disabled = false; }, 1500);
+        })
+        .catch((err) => {
+          saveBtn.disabled = false;
+          saveBtn.textContent = saveBtnDefaultLabel;
+          handleWriteError(err);
+        });
     });
   }
 
@@ -1973,10 +2027,19 @@
   // ── Boot ────────────────────────────────────────────────────────────
   function boot() {
     initForm();
-    if (!Store.useFirebase) setSyncStatus('Local mode — set up Firebase to sync across devices.');
+    if (!Store.useFirebase) {
+      setSyncStatus('Local mode — set up Firebase to sync across devices.');
+    } else {
+      setSyncStatus('Loading your bar…');
+    }
 
+    let firstBottlesLoad = true;
     Store.onBottles((bottles) => {
       bottlesState = bottles || {};
+      if (firstBottlesLoad) {
+        firstBottlesLoad = false;
+        if (Store.useFirebase) setSyncStatus('');
+      }
       renderInventory();
       if (activeTab === 'suggestions') {
         renderSuggestions();

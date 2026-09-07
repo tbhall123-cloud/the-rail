@@ -24,7 +24,7 @@
      style.css, since browsers and edge caches don't know a file changed
      just because index.html did (its own cache header is much shorter,
      which is why editing only index.html doesn't need this). -->
-<link rel="stylesheet" href="style.css?v=10">
+<link rel="stylesheet" href="style.css?v=11">
 </head>
 <body>
 
@@ -62,16 +62,16 @@
 </header>
 
 <nav class="tab-bar" role="tablist">
-  <button class="tab-btn" data-tab="shopping" type="button" role="tab">Shopping List</button>
-  <button class="tab-btn active" data-tab="inventory" type="button" role="tab">Inventory</button>
-  <button class="tab-btn" data-tab="suggestions" type="button" role="tab">What Can I Make</button>
-  <button class="tab-btn" data-tab="favorites" type="button" role="tab">Favorites</button>
-  <button class="tab-btn" data-tab="admin" type="button" role="tab" id="admin-tab-btn" style="display:none;">Admin</button>
+  <button class="tab-btn" data-tab="shopping" type="button" role="tab" id="tab-btn-shopping" aria-controls="tab-shopping" aria-selected="false" tabindex="-1">Shopping List</button>
+  <button class="tab-btn active" data-tab="inventory" type="button" role="tab" id="tab-btn-inventory" aria-controls="tab-inventory" aria-selected="true" tabindex="0">Inventory</button>
+  <button class="tab-btn" data-tab="suggestions" type="button" role="tab" id="tab-btn-suggestions" aria-controls="tab-suggestions" aria-selected="false" tabindex="-1">What Can I Make</button>
+  <button class="tab-btn" data-tab="favorites" type="button" role="tab" id="tab-btn-favorites" aria-controls="tab-favorites" aria-selected="false" tabindex="-1">Favorites</button>
+  <button class="tab-btn" data-tab="admin" type="button" role="tab" id="admin-tab-btn" aria-controls="tab-admin" aria-selected="false" tabindex="-1" style="display:none;">Admin</button>
 </nav>
 
 <main class="app-main">
 
-  <section id="tab-shopping" class="tab-panel">
+  <section id="tab-shopping" class="tab-panel" role="tabpanel" aria-labelledby="tab-btn-shopping" tabindex="0">
 
     <p class="panel-note">Bottles that are Low or Empty, plus anything you've added to your "To Buy" list — tap 🛒 on a recipe that's missing something, or add it here directly.</p>
     <form id="add-wishlist-form" class="add-form">
@@ -82,7 +82,7 @@
 
   </section>
 
-  <section id="tab-inventory" class="tab-panel active">
+  <section id="tab-inventory" class="tab-panel active" role="tabpanel" aria-labelledby="tab-btn-inventory" tabindex="0">
 
     <nav class="section-nav" aria-label="Jump to section">
       <a href="#section-add-bottle" class="section-nav-btn">➕ Add</a>
@@ -142,7 +142,7 @@
 
   </section>
 
-  <section id="tab-suggestions" class="tab-panel">
+  <section id="tab-suggestions" class="tab-panel" role="tabpanel" aria-labelledby="tab-btn-suggestions" tabindex="0">
 
     <details class="recipe-form-details">
       <summary>+ Add Your Own Recipe</summary>
@@ -166,13 +166,13 @@
 
   </section>
 
-  <section id="tab-favorites" class="tab-panel">
+  <section id="tab-favorites" class="tab-panel" role="tabpanel" aria-labelledby="tab-btn-favorites" tabindex="0">
 
     <div id="favorite-cards" class="recipe-cards"></div>
 
   </section>
 
-  <section id="tab-admin" class="tab-panel">
+  <section id="tab-admin" class="tab-panel" role="tabpanel" aria-labelledby="admin-tab-btn" tabindex="0">
 
     <section class="panel-block">
       <h2 class="panel-heading">Invite a Friend</h2>
@@ -249,6 +249,6 @@
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <script src="firebase-config.js?v=6"></script>
 <script src="cocktails.js?v=10"></script>
-<script src="app.js?v=11"></script>
+<script src="app.js?v=12"></script>
 </body>
 </html>
