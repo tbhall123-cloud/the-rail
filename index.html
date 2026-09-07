@@ -24,7 +24,7 @@
      style.css, since browsers and edge caches don't know a file changed
      just because index.html did (its own cache header is much shorter,
      which is why editing only index.html doesn't need this). -->
-<link rel="stylesheet" href="style.css?v=8">
+<link rel="stylesheet" href="style.css?v=9">
 </head>
 <body>
 
@@ -37,6 +37,7 @@
       <input id="login-email" type="email" placeholder="Email" autocomplete="username" required>
       <input id="login-password" type="password" placeholder="Password" autocomplete="current-password" required>
       <button type="submit" class="btn-primary">Sign In</button>
+      <button type="button" id="forgot-password-btn" class="link-btn">Forgot password?</button>
     </form>
 
     <form id="signup-form" class="auth-form" style="display:none;">
@@ -190,6 +191,11 @@
       <div id="invite-list"></div>
     </section>
 
+    <section class="panel-block">
+      <h2 class="panel-heading">Users</h2>
+      <div id="admin-user-list"></div>
+    </section>
+
   </section>
 
 </main>
@@ -243,6 +249,6 @@
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <script src="firebase-config.js?v=6"></script>
 <script src="cocktails.js?v=8"></script>
-<script src="app.js?v=9"></script>
+<script src="app.js?v=10"></script>
 </body>
 </html>

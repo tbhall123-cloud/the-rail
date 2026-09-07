@@ -1076,7 +1076,10 @@
     }
     if (tab === 'favorites') renderFavorites();
     if (tab === 'shopping') renderShoppingList();
-    if (tab === 'admin' && authIsAdmin) renderInviteList();
+    if (tab === 'admin' && authIsAdmin) {
+      renderInviteList();
+      renderAdminUserList();
+    }
   }
 
   function switchFilter(filter) {
@@ -1548,6 +1551,18 @@
       window.railAuth.signOut().then(() => location.reload());
     });
 
+    document.getElementById('forgot-password-btn').addEventListener('click', () => {
+      const email = document.getElementById('login-email').value.trim();
+      if (!email) {
+        setAuthMessage('Enter your email above first, then tap "Forgot password?".', true);
+        return;
+      }
+      setAuthMessage('Sending reset email…', false);
+      window.railAuth.sendPasswordResetEmail(email)
+        .then(() => setAuthMessage('Check your email for a password reset link.', false))
+        .catch((err) => setAuthMessage(resetPasswordErrorMessage(err), true));
+    });
+
     window.railAuth.onAuthStateChanged(handleAuthChange);
   }
 
@@ -1606,7 +1621,10 @@
         booted = true;
         boot();
       }
-      if (authIsAdmin && activeTab === 'admin') renderInviteList();
+      if (authIsAdmin && activeTab === 'admin') {
+        renderInviteList();
+        renderAdminUserList();
+      }
     });
   }
 
@@ -1677,6 +1695,12 @@
       return 'Wrong email or password.';
     }
     return err.message || 'Sign-in failed.';
+  }
+
+  function resetPasswordErrorMessage(err) {
+    if (err.code === 'auth/user-not-found') return 'No account found with that email.';
+    if (err.code === 'auth/invalid-email') return 'That email address looks invalid.';
+    return err.message || 'Could not send reset email.';
   }
 
   function setAuthMessage(text, isError) {
@@ -1793,6 +1817,71 @@
           li.appendChild(actions);
         }
 
+        list.appendChild(li);
+      });
+      container.innerHTML = '';
+      container.appendChild(list);
+    });
+  }
+
+  // ── Admin: users ──────────────────────────────────────────────────
+  // /users is only readable by the admin (see database.rules.json), so
+  // this is a real admin-only directory of every account on the platform.
+  function renderAdminUserList() {
+    const container = document.getElementById('admin-user-list');
+    window.railDB.ref('users').once('value').then((snap) => {
+      const users = snap.val() || {};
+      const entries = Object.entries(users).sort((a, b) =>
+        (a[1].email || '').localeCompare(b[1].email || '')
+      );
+
+      if (entries.length === 0) {
+        container.innerHTML = '<p class="empty-state">No users yet.</p>';
+        return;
+      }
+
+      const list = document.createElement('ul');
+      list.className = 'invite-list-items';
+      entries.forEach(([uid, u]) => {
+        const li = document.createElement('li');
+        li.className = 'invite-list-item';
+
+        const info = document.createElement('span');
+        info.innerHTML =
+          esc(u.email || uid) + '<br><span class="invite-list-meta">Bar: ' + esc(u.barId || '—') + '</span>';
+        li.appendChild(info);
+
+        const actions = document.createElement('span');
+        actions.className = 'invite-list-actions';
+
+        if (u.role === 'admin') {
+          const pill = document.createElement('span');
+          pill.className = 'invite-status-pill admin';
+          pill.textContent = 'Admin';
+          actions.appendChild(pill);
+        }
+
+        if (u.email) {
+          const resetBtn = document.createElement('button');
+          resetBtn.type = 'button';
+          resetBtn.className = 'admin-reset-btn';
+          resetBtn.textContent = 'Send Password Reset';
+          resetBtn.setAttribute('aria-label', 'Send password reset to ' + u.email);
+          resetBtn.addEventListener('click', () => {
+            resetBtn.disabled = true;
+            resetBtn.textContent = 'Sending…';
+            window.railAuth.sendPasswordResetEmail(u.email)
+              .then(() => { resetBtn.textContent = 'Sent!'; })
+              .catch((err) => {
+                resetBtn.disabled = false;
+                resetBtn.textContent = 'Send Password Reset';
+                alert('Could not send reset email: ' + err.message);
+              });
+          });
+          actions.appendChild(resetBtn);
+        }
+
+        li.appendChild(actions);
         list.appendChild(li);
       });
       container.innerHTML = '';
