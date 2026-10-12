@@ -1157,6 +1157,7 @@
     if (tab === 'admin' && authIsAdmin) {
       renderInviteList();
       renderAdminUserList();
+      renderAdminCatalog();
     }
   }
 
@@ -1858,6 +1859,7 @@
       if (authIsAdmin && activeTab === 'admin') {
         renderInviteList();
         renderAdminUserList();
+        renderAdminCatalog();
       }
     });
   }
@@ -2195,6 +2197,104 @@
       });
   }
 
+  // ── Admin: shared bottle catalog ──────────────────────────────────
+  // Entries come from every bar, so all text goes through textContent and
+  // only real image data URIs are shown (same rules as the autofill hint).
+  let adminCatalogEntries = [];
+
+  function renderAdminCatalog() {
+    const container = document.getElementById('admin-catalog-list');
+    if (!container || !Store.useFirebase) return;
+    container.innerHTML = '<p class="empty-state">Loading catalog…</p>';
+    window.railDB.ref('bottle-catalog').once('value')
+      .then((snap) => {
+        adminCatalogEntries = Object.entries(snap.val() || {})
+          .map(([key, e]) => Object.assign({ key }, e))
+          .sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
+        renderAdminCatalogRows();
+      })
+      .catch((err) => {
+        container.innerHTML = '';
+        const p = document.createElement('p');
+        p.className = 'auth-message error';
+        p.textContent = 'Could not load the catalog: ' + err.message;
+        container.appendChild(p);
+      });
+  }
+
+  function renderAdminCatalogRows() {
+    const container = document.getElementById('admin-catalog-list');
+    const countEl = document.getElementById('admin-catalog-count');
+    const q = R.normalize(document.getElementById('admin-catalog-search').value || '');
+    const shown = q
+      ? adminCatalogEntries.filter((e) =>
+          R.normalize(e.name || '').includes(q) || R.normalize(e.origin || '').includes(q) || R.normalize(e.category || '').includes(q))
+      : adminCatalogEntries;
+
+    countEl.textContent = q
+      ? shown.length + ' of ' + adminCatalogEntries.length + ' bottles'
+      : adminCatalogEntries.length + ' bottles';
+
+    container.innerHTML = '';
+    if (shown.length === 0) {
+      const p = document.createElement('p');
+      p.className = 'empty-state';
+      p.textContent = q ? 'No catalog bottles match your search.' : 'The catalog is empty — it fills as bars add bottles.';
+      container.appendChild(p);
+      return;
+    }
+
+    const list = document.createElement('ul');
+    list.className = 'invite-list-items';
+    shown.forEach((e) => {
+      const li = document.createElement('li');
+      li.className = 'invite-list-item catalog-admin-item';
+
+      const photo = safeCatalogPhoto(e);
+      if (photo) {
+        const img = document.createElement('img');
+        img.className = 'catalog-hint-thumb';
+        img.src = photo;
+        img.alt = '';
+        img.style.cursor = 'zoom-in';
+        img.addEventListener('click', () => openPhotoLightbox(photo, e.name));
+        li.appendChild(img);
+      }
+
+      const info = document.createElement('span');
+      info.className = 'catalog-hint-text';
+      const name = document.createElement('strong');
+      name.textContent = e.name || e.key;
+      const meta = document.createElement('span');
+      meta.className = 'invite-list-meta';
+      const catLabel = (R.CATEGORIES.find((c) => c.id === e.category) || {}).label || e.category;
+      const updated = typeof e.updatedAt === 'number' ? 'updated ' + new Date(e.updatedAt).toLocaleDateString() : '';
+      meta.textContent = [catLabel, e.origin, updated].filter(Boolean).join(' · ');
+      info.appendChild(name);
+      info.appendChild(meta);
+      li.appendChild(info);
+
+      const del = document.createElement('button');
+      del.type = 'button';
+      del.className = 'invite-cancel-btn';
+      del.textContent = 'Delete';
+      del.setAttribute('aria-label', 'Delete ' + (e.name || e.key) + ' from catalog');
+      del.addEventListener('click', () => {
+        if (!confirm('Delete "' + (e.name || e.key) + '" from the shared catalog? Bottles already in bars are not affected.')) return;
+        window.railDB.ref('bottle-catalog/' + e.key).remove()
+          .then(() => {
+            adminCatalogEntries = adminCatalogEntries.filter((x) => x.key !== e.key);
+            renderAdminCatalogRows();
+          })
+          .catch(handleWriteError);
+      });
+      li.appendChild(del);
+
+      list.appendChild(li);
+    });
+    container.appendChild(list);
+  }
+
   function initAdminForm() {
     const form = document.getElementById('invite-form');
     if (!form) return;
@@ -2202,6 +2302,8 @@
       e.preventDefault();
       generateInvite(document.getElementById('invite-mode').value);
     });
+    const catalogSearch = document.getElementById('admin-catalog-search');
+    if (catalogSearch) catalogSearch.addEventListener('input', renderAdminCatalogRows);
   }
 
   // ── Boot ────────────────────────────────────────────────────────────
