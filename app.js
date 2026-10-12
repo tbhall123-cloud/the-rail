@@ -2274,6 +2274,17 @@
       info.appendChild(meta);
       li.appendChild(info);
 
+      const actions = document.createElement('span');
+      actions.className = 'invite-list-actions';
+
+      const edit = document.createElement('button');
+      edit.type = 'button';
+      edit.className = 'invite-copy-btn';
+      edit.textContent = 'Edit';
+      edit.setAttribute('aria-label', 'Edit ' + (e.name || e.key));
+      edit.addEventListener('click', () => renderAdminCatalogEditor(li, e));
+      actions.appendChild(edit);
+
       const del = document.createElement('button');
       del.type = 'button';
       del.className = 'invite-cancel-btn';
@@ -2288,11 +2299,140 @@
           })
           .catch(handleWriteError);
       });
-      li.appendChild(del);
+      actions.appendChild(del);
+      li.appendChild(actions);
 
       list.appendChild(li);
     });
     container.appendChild(list);
+  }
+
+  // Inline editor for one catalog card — name, category, origin, photo.
+  // Renaming moves the card to its new key (the key is derived from the
+  // name) in a single multi-path write, so the old name doesn't linger.
+  function renderAdminCatalogEditor(li, entry) {
+    li.innerHTML = '';
+    li.classList.add('catalog-admin-editing');
+    let photo = safeCatalogPhoto(entry);
+
+    const form = document.createElement('div');
+    form.className = 'catalog-edit-form';
+
+    const nameInput = document.createElement('input');
+    nameInput.type = 'text';
+    nameInput.maxLength = 100;
+    nameInput.value = entry.name || '';
+    nameInput.setAttribute('aria-label', 'Bottle name');
+
+    const catSelect = document.createElement('select');
+    catSelect.setAttribute('aria-label', 'Category');
+    const cats = R.CATEGORIES.slice();
+    if (entry.category && !cats.some((c) => c.id === entry.category)) {
+      cats.push({ id: entry.category, label: entry.category, emoji: '❓' });
+    }
+    cats.forEach((c) => {
+      const opt = document.createElement('option');
+      opt.value = c.id;
+      opt.textContent = c.emoji + ' ' + c.label;
+      if (c.id === entry.category) opt.selected = true;
+      catSelect.appendChild(opt);
+    });
+
+    const originInput = document.createElement('input');
+    originInput.type = 'text';
+    originInput.maxLength = 200;
+    originInput.placeholder = 'Origin (optional)';
+    originInput.value = entry.origin || '';
+    originInput.setAttribute('aria-label', 'Origin');
+
+    const photoRow = document.createElement('div');
+    photoRow.className = 'catalog-edit-photo-row';
+    const preview = document.createElement('img');
+    preview.className = 'catalog-hint-thumb';
+    preview.alt = '';
+    const noPhoto = document.createElement('span');
+    noPhoto.className = 'invite-list-meta';
+    noPhoto.textContent = 'No photo';
+    const changePhoto = document.createElement('button');
+    changePhoto.type = 'button';
+    changePhoto.className = 'invite-copy-btn';
+    const removePhoto = document.createElement('button');
+    removePhoto.type = 'button';
+    removePhoto.className = 'invite-cancel-btn';
+    removePhoto.textContent = 'Remove photo';
+
+    function syncPhoto() {
+      preview.style.display = photo ? '' : 'none';
+      if (photo) preview.src = photo;
+      noPhoto.style.display = photo ? 'none' : '';
+      changePhoto.textContent = photo ? 'Change photo' : 'Add photo';
+      removePhoto.style.display = photo ? '' : 'none';
+    }
+    changePhoto.addEventListener('click', () => {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'image/*';
+      input.addEventListener('change', async () => {
+        const file = input.files && input.files[0];
+        if (!file) return;
+        try {
+          photo = await compressImageToDataUrl(file, 500, 0.7);
+          syncPhoto();
+        } catch (err) {
+          showErrorToast('Could not read that photo.');
+        }
+      });
+      input.click();
+    });
+    removePhoto.addEventListener('click', () => { photo = null; syncPhoto(); });
+    photoRow.appendChild(preview);
+    photoRow.appendChild(noPhoto);
+    photoRow.appendChild(changePhoto);
+    photoRow.appendChild(removePhoto);
+    syncPhoto();
+
+    const buttons = document.createElement('div');
+    buttons.className = 'catalog-edit-buttons';
+    const save = document.createElement('button');
+    save.type = 'button';
+    save.className = 'btn-primary';
+    save.textContent = 'Save';
+    const cancel = document.createElement('button');
+    cancel.type = 'button';
+    cancel.className = 'btn-secondary';
+    cancel.textContent = 'Cancel';
+    cancel.addEventListener('click', renderAdminCatalogRows);
+
+    save.addEventListener('click', () => {
+      const name = nameInput.value.trim();
+      const newKey = Store.catalogKeyFor(name);
+      if (!name || !newKey) { showErrorToast('Give the bottle a name.'); return; }
+      if (newKey !== entry.key && adminCatalogEntries.some((x) => x.key === newKey) &&
+          !confirm('"' + name + '" is already in the catalog — replace that card with this one?')) return;
+
+      const data = { name, category: catSelect.value, updatedAt: firebase.database.ServerValue.TIMESTAMP };
+      const origin = originInput.value.trim();
+      if (origin) data.origin = origin;
+      if (photo) data.photoUrl = photo;
+
+      const updates = { ['bottle-catalog/' + newKey]: data };
+      if (newKey !== entry.key) updates['bottle-catalog/' + entry.key] = null;
+
+      save.disabled = true;
+      window.railDB.ref().update(updates)
+        .then(() => renderAdminCatalog())
+        .catch((err) => { save.disabled = false; handleWriteError(err); });
+    });
+
+    buttons.appendChild(save);
+    buttons.appendChild(cancel);
+    form.appendChild(nameInput);
+    form.appendChild(catSelect);
+    form.appendChild(originInput);
+    form.appendChild(photoRow);
+    form.appendChild(buttons);
+    li.appendChild(form);
+    nameInput.focus();
   }
 
   function initAdminForm() {

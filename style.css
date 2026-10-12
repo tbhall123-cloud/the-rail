@@ -466,6 +466,36 @@ body {
   font-size: 0.72rem;
 }
 
+.catalog-edit-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.catalog-edit-form input,
+.catalog-edit-form select {
+  background: var(--walnut-900);
+  border: 1px solid var(--walnut-600);
+  color: var(--cream);
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  padding: 0.5rem 0.6rem;
+  border-radius: 4px;
+  width: 100%;
+}
+
+.catalog-edit-form input:focus,
+.catalog-edit-form select:focus { outline: none; border-color: var(--brass); }
+
+.catalog-edit-photo-row,
+.catalog-edit-buttons {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
 .error-toast {
   position: fixed;
   left: 50%;
