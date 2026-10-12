@@ -431,6 +431,41 @@ body {
 .bottle-name { cursor: pointer; }
 .bottle-name:hover { color: var(--brass-bright); text-decoration: underline; }
 
+.catalog-hint {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  margin-top: 0.75rem;
+  padding: 0.6rem 0.7rem;
+  background: var(--walnut-800);
+  border: 1px solid var(--brass);
+  border-radius: 6px;
+  flex-wrap: wrap;
+}
+
+.catalog-hint-thumb {
+  width: 44px;
+  height: 44px;
+  object-fit: cover;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.catalog-hint-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  flex: 1;
+  min-width: 0;
+  font-size: 0.82rem;
+  overflow-wrap: break-word;
+}
+
+.catalog-hint-meta {
+  color: var(--cream-dim);
+  font-size: 0.72rem;
+}
+
 .error-toast {
   position: fixed;
   left: 50%;

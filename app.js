@@ -30,6 +30,8 @@
   let pendingInviteToken = null;
   let signupInProgress = false;
   let pendingPhotoFile = null;
+  let pendingCatalogPhotoUrl = null;
+  let catalogLookupTimer = null;
   let ocrWorker = null;
 
   // ── Storage adapter: Firebase when configured, localStorage fallback ─
@@ -280,6 +282,33 @@
           lsSet('rail_wishlist', all);
           wishlistCb && wishlistCb(all);
         }
+      },
+      // Shared across every bar (not bar-scoped like everything else in
+      // this module) — a cross-bar catalog of bottle "cards" (name,
+      // category, origin, photo) so a bottle someone already
+      // photographed/OCR'd once doesn't need to be redone from scratch
+      // in a different bar. Only ever product facts, never inventory
+      // state (quantity/level/restricted) and never descriptions, which
+      // stay private per-bar. No-op in local mode — there's no other
+      // bar to share with without a real backend.
+      catalogKeyFor(name) {
+        return R.normalize(name).replace(/\s+/g, '-');
+      },
+      async lookupCatalogEntry(name) {
+        if (!useFirebase) return null;
+        const key = this.catalogKeyFor(name);
+        if (!key) return null;
+        const snap = await window.railDB.ref('bottle-catalog/' + key).once('value');
+        return snap.val();
+      },
+      upsertCatalogEntry(entry) {
+        if (!useFirebase) return;
+        const key = this.catalogKeyFor(entry.name);
+        if (!key) return;
+        const data = { name: entry.name, category: entry.category, updatedAt: firebase.database.ServerValue.TIMESTAMP };
+        if (entry.origin) data.origin = entry.origin;
+        if (entry.photoUrl) data.photoUrl = entry.photoUrl;
+        window.railDB.ref('bottle-catalog/' + key).update(data).catch(() => {});
       },
       async getCache(key) {
         if (useFirebase) {
@@ -651,6 +680,7 @@
     });
     categorySelect.addEventListener('change', () => {
       Store.updateBottleCategory(bottle.id, categorySelect.value);
+      Store.upsertCatalogEntry(Object.assign({}, bottle, { category: categorySelect.value }));
     });
     categoryRow.appendChild(categorySelect);
 
@@ -787,6 +817,7 @@
       const newName = input.value.trim();
       if (newName && newName !== bottle.name) {
         Store.updateBottleName(bottle.id, newName);
+        Store.upsertCatalogEntry(Object.assign({}, bottle, { name: newName }));
       } else {
         renderNameDisplay(nameWrap, bottle);
       }
@@ -855,6 +886,7 @@
       const newOrigin = input.value.trim();
       if (newOrigin !== (bottle.origin || '')) {
         Store.updateBottleOrigin(bottle.id, newOrigin);
+        Store.upsertCatalogEntry(Object.assign({}, bottle, { origin: newOrigin }));
       } else {
         renderOriginDisplay(originWrap, bottle);
       }
@@ -1155,14 +1187,20 @@
         } catch (err) {
           console.warn('[The Rail] photo upload failed:', err.message);
         }
+      } else if (pendingCatalogPhotoUrl) {
+        bottle.photoUrl = pendingCatalogPhotoUrl;
       }
       Store.addBottle(bottle);
+      Store.upsertCatalogEntry(bottle);
 
       nameInput.value = '';
       originInput.value = '';
       resetPhotoScan();
+      hideCatalogHint();
       nameInput.focus();
     });
+
+    document.getElementById('bottle-name').addEventListener('input', (e) => checkCatalogHint(e.target.value));
 
     initPhotoScan();
     initPhotoLightbox();
@@ -1389,8 +1427,128 @@
     removeBtn.addEventListener('click', () => resetPhotoScan());
   }
 
+  // ── Shared bottle catalog: "already in the catalog" autofill hint ────
+  let appliedCatalogKey = null;
+
+  function checkCatalogHint(rawName) {
+    clearTimeout(catalogLookupTimer);
+    const name = rawName.trim();
+
+    // Typed away from a bottle whose catalog photo was already applied —
+    // drop that photo so it can't end up on a different bottle.
+    if (appliedCatalogKey && Store.catalogKeyFor(name) !== appliedCatalogKey) {
+      appliedCatalogKey = null;
+      pendingCatalogPhotoUrl = null;
+      if (!pendingPhotoFile) {
+        const preview = document.getElementById('bottle-photo-preview');
+        if (preview) preview.style.display = 'none';
+      }
+    }
+
+    if (name.length < 3) { hideCatalogHint(); return; }
+    catalogLookupTimer = setTimeout(async () => {
+      let entry = null;
+      try { entry = await Store.lookupCatalogEntry(name); } catch (e) { entry = null; }
+      if (document.getElementById('bottle-name').value.trim() !== name) return; // stale
+      if (!entry || Store.catalogKeyFor(name) === appliedCatalogKey) { hideCatalogHint(); return; }
+      showCatalogHint(entry);
+    }, 400);
+  }
+
+  // Catalog entries are written by people in OTHER bars, so everything
+  // here goes through textContent, and only a real image data URI is
+  // ever used as a photo source.
+  function safeCatalogPhoto(entry) {
+    return typeof entry.photoUrl === 'string' && entry.photoUrl.startsWith('data:image/') ? entry.photoUrl : null;
+  }
+
+  function showCatalogHint(entry) {
+    const hint = document.getElementById('catalog-hint');
+    if (!hint) return;
+    hint.innerHTML = '';
+
+    const photo = safeCatalogPhoto(entry);
+    if (photo) {
+      const img = document.createElement('img');
+      img.className = 'catalog-hint-thumb';
+      img.src = photo;
+      img.alt = '';
+      hint.appendChild(img);
+    }
+
+    const text = document.createElement('div');
+    text.className = 'catalog-hint-text';
+    const title = document.createElement('strong');
+    title.textContent = entry.name;
+    const meta = document.createElement('span');
+    meta.className = 'catalog-hint-meta';
+    const catLabel = (R.CATEGORIES.find((c) => c.id === entry.category) || {}).label || entry.category;
+    meta.textContent = 'Already in the catalog · ' + [catLabel, entry.origin].filter(Boolean).join(' · ');
+    text.appendChild(title);
+    text.appendChild(meta);
+    hint.appendChild(text);
+
+    const useBtn = document.createElement('button');
+    useBtn.type = 'button';
+    useBtn.className = 'btn-secondary';
+    useBtn.textContent = 'Use this';
+    useBtn.addEventListener('click', () => applyCatalogEntry(entry));
+    hint.appendChild(useBtn);
+
+    const dismissBtn = document.createElement('button');
+    dismissBtn.type = 'button';
+    dismissBtn.className = 'icon-btn';
+    dismissBtn.textContent = '✕';
+    dismissBtn.setAttribute('aria-label', 'Dismiss catalog suggestion');
+    dismissBtn.addEventListener('click', hideCatalogHint);
+    hint.appendChild(dismissBtn);
+
+    hint.style.display = 'flex';
+  }
+
+  function hideCatalogHint() {
+    clearTimeout(catalogLookupTimer);
+    const hint = document.getElementById('catalog-hint');
+    if (hint) {
+      hint.style.display = 'none';
+      hint.innerHTML = '';
+    }
+  }
+
+  function applyCatalogEntry(entry) {
+    document.getElementById('bottle-name').value = entry.name;
+    if (R.CATEGORIES.some((c) => c.id === entry.category)) {
+      document.getElementById('bottle-category').value = entry.category;
+    }
+    const originInput = document.getElementById('bottle-origin');
+    if (entry.origin && !originInput.value.trim()) originInput.value = entry.origin;
+
+    const photo = safeCatalogPhoto(entry);
+    if (photo && !pendingPhotoFile) {
+      pendingCatalogPhotoUrl = photo;
+      document.getElementById('bottle-photo-img').src = photo;
+      document.getElementById('bottle-photo-preview').style.display = 'flex';
+    }
+    appliedCatalogKey = Store.catalogKeyFor(entry.name);
+    hideCatalogHint();
+  }
+
+  // Existing bottles predate the catalog — seed it from this bar once per
+  // device so what's already on the shelf is immediately reusable by others.
+  function seedCatalogOnce() {
+    if (!Store.useFirebase || !currentBarPath) return;
+    const flag = 'rail_catalog_seeded_' + currentBarPath;
+    try { if (localStorage.getItem(flag)) return; } catch (e) { /* storage blocked */ }
+    Object.values(bottlesState).forEach((b) => {
+      if (b && b.name && b.category) Store.upsertCatalogEntry(b);
+    });
+    try { localStorage.setItem(flag, '1'); } catch (e) { /* storage blocked */ }
+  }
+
   function resetPhotoScan() {
     pendingPhotoFile = null;
+    pendingCatalogPhotoUrl = null;
+    appliedCatalogKey = null;
     const photoInput = document.getElementById('bottle-photo-input');
     if (photoInput) photoInput.value = '';
     const preview = document.getElementById('bottle-photo-preview');
@@ -1412,6 +1570,8 @@
       try {
         const url = await Store.uploadBottlePhoto(file);
         Store.updateBottlePhoto(bottleId, url);
+        const b = bottlesState[bottleId];
+        if (b) Store.upsertCatalogEntry(Object.assign({}, b, { photoUrl: url }));
       } catch (err) {
         alert('Could not upload photo: ' + err.message);
       }
@@ -2053,6 +2213,7 @@
       if (firstBottlesLoad) {
         firstBottlesLoad = false;
         if (Store.useFirebase) setSyncStatus('');
+        seedCatalogOnce();
       }
       renderInventory();
       if (activeTab === 'suggestions') {
