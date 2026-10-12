@@ -308,7 +308,7 @@
         const data = { name: entry.name, category: entry.category, updatedAt: firebase.database.ServerValue.TIMESTAMP };
         if (entry.origin) data.origin = entry.origin;
         if (entry.photoUrl) data.photoUrl = entry.photoUrl;
-        window.railDB.ref('bottle-catalog/' + key).update(data).catch(() => {});
+        return window.railDB.ref('bottle-catalog/' + key).update(data).then(() => true, () => false);
       },
       async getCache(key) {
         if (useFirebase) {
@@ -1535,14 +1535,20 @@
 
   // Existing bottles predate the catalog — seed it from this bar once per
   // device so what's already on the shelf is immediately reusable by others.
+  // Only marked done once every write actually succeeds, so a run blocked
+  // by not-yet-published rules retries on the next load.
   function seedCatalogOnce() {
     if (!Store.useFirebase || !currentBarPath) return;
-    const flag = 'rail_catalog_seeded_' + currentBarPath;
+    const flag = 'rail_catalog_seeded_v2_' + currentBarPath;
     try { if (localStorage.getItem(flag)) return; } catch (e) { /* storage blocked */ }
-    Object.values(bottlesState).forEach((b) => {
-      if (b && b.name && b.category) Store.upsertCatalogEntry(b);
+    const writes = Object.values(bottlesState)
+      .filter((b) => b && b.name && b.category)
+      .map((b) => Store.upsertCatalogEntry(b));
+    Promise.all(writes).then((results) => {
+      if (results.every(Boolean)) {
+        try { localStorage.setItem(flag, '1'); } catch (e) { /* storage blocked */ }
+      }
     });
-    try { localStorage.setItem(flag, '1'); } catch (e) { /* storage blocked */ }
   }
 
   function resetPhotoScan() {
