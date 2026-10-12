@@ -436,7 +436,7 @@
   // dropped connection, a rules mismatch) and actually tells the user,
   // instead of the UI just silently not updating with no explanation.
   let errorToastTimer = null;
-  function showErrorToast(message) {
+  function showErrorToast(message, isInfo) {
     let toast = document.getElementById('rail-error-toast');
     if (!toast) {
       toast = document.createElement('div');
@@ -445,9 +445,66 @@
       document.body.appendChild(toast);
     }
     toast.textContent = message;
+    toast.classList.toggle('info', !!isInfo);
     toast.classList.add('visible');
     clearTimeout(errorToastTimer);
     errorToastTimer = setTimeout(() => toast.classList.remove('visible'), 4000);
+  }
+
+  // ── Share as text ───────────────────────────────────────────────────
+  function buildShoppingListText() {
+    const lines = ['🛒 Shopping List — The Rail'];
+    const wish = Object.values(wishlistState).filter(Boolean).sort((a, b) => (a.addedAt || 0) - (b.addedAt || 0));
+    const bottles = Object.values(bottlesState).filter(Boolean);
+    const byName = (a, b) => a.name.localeCompare(b.name);
+    const empty = bottles.filter((b) => b.level === 'empty').sort(byName);
+    const low = bottles.filter((b) => b.level === 'low').sort(byName);
+    const bottleLine = (b) => '• ' + b.name + (b.origin ? ' (' + b.origin + ')' : '');
+
+    if (wish.length) {
+      lines.push('', 'To buy:');
+      wish.forEach((w) => lines.push('• ' + w.label + (w.note ? ' — ' + w.note : '')));
+    }
+    if (empty.length) { lines.push('', 'Out of:'); empty.forEach((b) => lines.push(bottleLine(b))); }
+    if (low.length) { lines.push('', 'Running low:'); low.forEach((b) => lines.push(bottleLine(b))); }
+    return lines.length === 1 ? '' : lines.join('\n');
+  }
+
+  function buildBarText() {
+    const lines = ['🥃 My Bar — The Rail'];
+    const have = Object.values(bottlesState).filter((b) => b && b.level !== 'empty');
+    R.CATEGORIES.forEach((cat) => {
+      const inCat = have.filter((b) => b.category === cat.id).sort((a, b) => a.name.localeCompare(b.name));
+      if (!inCat.length) return;
+      lines.push('', cat.emoji + ' ' + cat.label);
+      inCat.forEach((b) => {
+        const qty = (b.quantity || 1) > 1 ? ' ×' + b.quantity : '';
+        lines.push('• ' + b.name + qty + (b.level === 'low' ? ' (low)' : ''));
+      });
+    });
+    const mixers = Object.values(mixersState).filter((m) => m && m.present).map((m) => m.name).sort();
+    if (mixers.length) lines.push('', '🧪 Mixers & garnishes: ' + mixers.join(', '));
+    return lines.length === 1 ? '' : lines.join('\n');
+  }
+
+  // Phones (and Safari/Chrome on Mac) get the native share sheet, which
+  // includes Messages; everywhere else the text is copied to paste.
+  async function shareText(title, text, emptyMessage) {
+    if (!text) { showErrorToast(emptyMessage, true); return; }
+    if (navigator.share) {
+      try {
+        await navigator.share({ title, text });
+        return;
+      } catch (err) {
+        if (err && err.name === 'AbortError') return; // user closed the sheet
+      }
+    }
+    try {
+      await navigator.clipboard.writeText(text);
+      showErrorToast('Copied — paste it into a text.', true);
+    } catch (err) {
+      showErrorToast("Couldn't share or copy on this device.");
+    }
   }
 
   function handleWriteError(err) {
@@ -1253,6 +1310,11 @@
       Store.addWishlistItem({ label, note: '', addedAt: Date.now() });
       input.value = '';
     });
+
+    document.getElementById('share-shopping-btn').addEventListener('click', () =>
+      shareText('Shopping List', buildShoppingListText(), 'Your shopping list is empty — nothing to share.'));
+    document.getElementById('share-bar-btn').addEventListener('click', () =>
+      shareText('My Bar', buildBarText(), 'Your bar is empty — nothing to share yet.'));
 
     document.querySelectorAll('.tab-btn').forEach((btn) =>
       btn.addEventListener('click', () => switchTab(btn.dataset.tab))

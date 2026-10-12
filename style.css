@@ -516,6 +516,16 @@ body {
   transition: opacity 0.2s ease, transform 0.2s ease;
 }
 
+.error-toast.info {
+  background: var(--walnut-700);
+  border: 1px solid var(--brass);
+}
+
+.share-btn {
+  display: block;
+  margin: 0 0 0.9rem auto;
+}
+
 .error-toast.visible {
   opacity: 1;
   transform: translate(-50%, 0);
