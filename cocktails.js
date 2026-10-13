@@ -343,6 +343,106 @@
     groups.forEach(([key, terms]) => { SPECIFIC_TERMS[key] = terms; })
   );
 
+  // Exact TheCocktailDB ingredient names to search for each specific
+  // group, so discovery looks up drinks for the liqueurs/bitters/fortified
+  // wines a bar actually owns. Every name was confirmed against the API
+  // (search.php returns the canonical spelling; filter.php confirmed at
+  // least one drink uses it). The free key's list.php stops at 100 names
+  // (A–"Kiwi"), so it can't be the source of truth on its own.
+  // Groups with no ingredient that any drink uses are left out on
+  // purpose — owning one of those falls back to the category's default
+  // COCKTAILDB_TERMS (see discoveryTerms): violette, fernet, limoncello,
+  // chocolate/celery/grapefruit/cherry/walnut bitters, madeira, marsala.
+  const COCKTAILDB_INGREDIENT_NAMES = {
+    'liqueur:amaretto':         ['Amaretto'],
+    'liqueur:cassis':           ['Creme De Cassis'],
+    'liqueur:raspberry':        ['Chambord Raspberry Liqueur', 'Raspberry Liqueur'],
+    'liqueur:menthe':           ['Green Creme de Menthe', 'White Creme de Menthe'],
+    'liqueur:cacao':            ['Creme De Cacao', 'Dark Creme De Cacao'],
+    'liqueur:benedictine':      ['Benedictine'],
+    'liqueur:drambuie':         ['Drambuie'],
+    'liqueur:chartreuse':       ['Green Chartreuse', 'Yellow Chartreuse'],
+    'liqueur:elderflower':      ['St. Germain'],
+    'liqueur:melon':            ['Midori Melon Liqueur', 'Melon Liqueur'],
+    'liqueur:anise':            ['Absinthe', 'Sambuca', 'Black Sambuca', 'Pernod', 'Ouzo', 'Anis', 'Anisette', 'Ricard'],
+    'liqueur:hazelnut':         ['Frangelico'],
+    'liqueur:galliano':         ['Galliano'],
+    'liqueur:irish-cream':      ['Baileys Irish Cream', 'Irish cream'],
+    'liqueur:southern-comfort': ['Southern Comfort'],
+    'liqueur:jagermeister':     ['Jagermeister'],
+    'liqueur:maraschino':       ['Maraschino Liqueur'],
+    'liqueur:peach-schnapps':   ['Peach Schnapps'],
+    'liqueur:amaro':            ['Amaro Montenegro'],
+    'bitters:peychaud':         ['Peychaud bitters'],
+    'bitters:orange':           ['Orange Bitters'],
+    'fortified:sherry':         ['Sherry'],
+    'fortified:port':           ['Port', 'Ruby Port'],
+    'fortified:lillet':         ['Lillet Blanc', 'Lillet'],
+    'fortified:dubonnet':       ['Dubonnet Rouge'],
+  };
+
+  // In stock = same rules as hasCategoryStock(): not empty, not restricted.
+  function inStockBottles(bottlesState, category) {
+    return Object.values(bottlesState || {}).filter(
+      (b) => b && b.category === category && b.level !== 'empty' && !b.restricted
+    );
+  }
+
+  // Specific-ingredient keys (e.g. 'liqueur:chartreuse') for the in-stock
+  // bottles in the catch-all categories, read from each bottle's name.
+  function ownedSpecificKeys(bottlesState) {
+    const keys = new Set();
+    Object.keys(SPECIFIC_INGREDIENTS).forEach((category) => {
+      inStockBottles(bottlesState, category).forEach((b) => {
+        const key = specificKeyFor(category, b.name);
+        if (key) keys.add(key);
+      });
+    });
+    return keys;
+  }
+
+  // Catch-all categories holding at least one in-stock bottle that gives
+  // discovery nothing specific to search (no group match, e.g. a bottle
+  // just named "Liqueur", or a group with no CocktailDB names) — those
+  // keep searching the category's default terms so nothing works worse
+  // than before.
+  function fallbackCategories(bottlesState) {
+    return Object.keys(SPECIFIC_INGREDIENTS).filter((category) =>
+      inStockBottles(bottlesState, category).some((b) => {
+        const key = specificKeyFor(category, b.name);
+        return !key || !COCKTAILDB_INGREDIENT_NAMES[key];
+      })
+    );
+  }
+
+  // TheCocktailDB filter terms for everything in stock. Base spirits use
+  // their fixed COCKTAILDB_TERMS exactly as before; catch-all categories
+  // search the specific ingredients actually owned, plus the default
+  // terms when fallbackCategories() says so.
+  function discoveryTerms(bottlesState) {
+    const terms = new Set();
+    const fallback = new Set(fallbackCategories(bottlesState));
+    CATEGORIES.forEach(({ id }) => {
+      if (!hasCategoryStock(bottlesState, id)) return;
+      if (!SPECIFIC_INGREDIENTS[id] || fallback.has(id)) {
+        (COCKTAILDB_TERMS[id] || []).forEach((t) => terms.add(t));
+      }
+    });
+    ownedSpecificKeys(bottlesState).forEach((key) => {
+      (COCKTAILDB_INGREDIENT_NAMES[key] || []).forEach((t) => terms.add(t));
+    });
+    return terms;
+  }
+
+  // Changes whenever discoveryTerms() could change: stocked categories,
+  // owned specific ingredients, and which catch-alls need their fallback.
+  function discoveryRefreshKey(bottlesState) {
+    const stocked = CATEGORIES.map((c) => c.id).filter((id) => hasCategoryStock(bottlesState, id)).sort();
+    const keys = [...ownedSpecificKeys(bottlesState)].sort();
+    const fallback = fallbackCategories(bottlesState).sort();
+    return stocked.join(',') + '|' + keys.join(',') + '|' + fallback.join(',');
+  }
+
   // ── Mixer synonym groups: raw ingredient text → canonical mixer id ─
   const MIXER_SYNONYMS = {
     'soda-water':       ['soda water', 'club soda', 'sparkling water', 'carbonated water', 'cream soda'],
@@ -649,5 +749,9 @@
     foldText,
     specificKeyFor,
     bottleMatchesSpecific,
+    COCKTAILDB_INGREDIENT_NAMES,
+    ownedSpecificKeys,
+    discoveryTerms,
+    discoveryRefreshKey,
   };
 })();

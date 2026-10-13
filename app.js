@@ -348,39 +348,42 @@
   }
 
   // ── CocktailDB discovery ───────────────────────────────────────────
+  // Runs fn over items `size` at a time, returning results in input order.
+  // fn must handle its own errors so one failed request can't stop the rest.
+  async function inBatches(items, size, fn) {
+    const results = [];
+    for (let i = 0; i < items.length; i += size) {
+      results.push(...await Promise.all(items.slice(i, i + size).map(fn)));
+    }
+    return results;
+  }
+
   async function fetchDiscovered() {
-    const stockedCategories = R.CATEGORIES
-      .map((c) => c.id)
-      .filter((cat) => R.hasCategoryStock(bottlesState, cat));
+    const terms = [...R.discoveryTerms(bottlesState)];
+    if (terms.length === 0) return [];
 
-    const terms = new Set();
-    stockedCategories.forEach((cat) => {
-      (R.COCKTAILDB_TERMS[cat] || []).forEach((t) => terms.add(t));
-    });
-    if (terms.size === 0) return [];
-
-    const drinkIds = new Map();
-    for (const term of terms) {
+    const filterResults = await inBatches(terms, 4, async (term) => {
       try {
-        const result = await cachedFetch('filter_' + term, async () => {
+        return await cachedFetch('filter_' + term, async () => {
           const res = await fetch(
             'https://www.thecocktaildb.com/api/json/v1/1/filter.php?i=' + encodeURIComponent(term)
           );
           const json = await res.json();
           return (json.drinks || []).map((d) => ({ id: d.idDrink, name: d.strDrink }));
         });
-        (result || []).forEach((d) => drinkIds.set(d.id, d.name));
       } catch (e) {
         console.warn('[The Rail] filter fetch failed for', term, e);
+        return [];
       }
-    }
+    });
+    const drinkIds = new Map();
+    filterResults.forEach((result) => (result || []).forEach((d) => drinkIds.set(d.id, d.name)));
 
     const curatedNames = new Set(R.CURATED_RECIPES.map((r) => R.normalize(r.name)));
-    const discovered = [];
-    for (const [id, name] of drinkIds) {
-      if (curatedNames.has(R.normalize(name))) continue;
+    const toLookUp = [...drinkIds].filter(([, name]) => !curatedNames.has(R.normalize(name)));
+    const details = await inBatches(toLookUp, 4, async ([id]) => {
       try {
-        const detail = await cachedFetch('lookup_' + id, async () => {
+        return await cachedFetch('lookup_' + id, async () => {
           const res = await fetch('https://www.thecocktaildb.com/api/json/v1/1/lookup.php?i=' + id);
           const json = await res.json();
           const d = json.drinks && json.drinks[0];
@@ -395,20 +398,18 @@
           }
           return { name: d.strDrink, ingredients, thumb: d.strDrinkThumb, instructions: d.strInstructions || '' };
         });
-        if (detail) discovered.push(detail);
       } catch (e) {
         console.warn('[The Rail] lookup fetch failed for', id, e);
+        return null;
       }
-    }
-    return discovered;
+    });
+    return details.filter(Boolean);
   }
 
   async function refreshDiscoveredIfNeeded() {
-    const stockedKey = R.CATEGORIES
-      .map((c) => c.id)
-      .filter((cat) => R.hasCategoryStock(bottlesState, cat))
-      .sort()
-      .join(',');
+    // Includes owned specific liqueurs/bitters/fortified wines, so adding a
+    // Chartreuse to a bar that already has an Amaretto triggers a new lookup.
+    const stockedKey = R.discoveryRefreshKey(bottlesState);
     if (stockedKey === lastDiscoveryKey && discoveredRecipes.length) return;
     if (discoveryInFlight) return;
     discoveryInFlight = true;
