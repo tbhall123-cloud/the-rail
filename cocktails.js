@@ -72,8 +72,13 @@
   //            Ready/Missing, since the drink doesn't work without it.
   //            note overrides the generic category label for display
   //            when a specific ingredient is customary (e.g. Prosecco
-  //            for a Champagne/Sparkling slot); matching still checks
-  //            the whole category — note is display-only.
+  //            for a Champagne/Sparkling slot). For most categories
+  //            matching still checks the whole category, but in the
+  //            catch-all categories listed in SPECIFIC_INGREDIENTS
+  //            (Liqueur (Other), Bitters, Fortified Wine) a note naming
+  //            a specific ingredient also drives matching — e.g. Kir
+  //            Royale's "Crème de Cassis" needs a bottle whose name
+  //            says cassis, not just any liqueur.
   // optional: { item, amount } — a true garnish. Never blocks Ready.
   const CURATED_RECIPES = [
     { name: 'Old Fashioned',
@@ -279,6 +284,65 @@
     'courvoisier': 'Cognac',
   };
 
+  // ── Specific ingredients inside catch-all categories ───────────────
+  // Liqueur (Other), Bitters and Fortified Wine each hold very different
+  // bottles, so matching by category alone lets an Amaretto satisfy a
+  // recipe that needs Crème de Cassis. When a recipe names one of these
+  // groups, only a bottle whose NAME mentions one of the group's terms
+  // counts. Anything not listed here (plain "liqueur", "bitters",
+  // "Angostura bitters", "aromatic bitters") stays generic, so any bottle
+  // in the category works. Angostura is deliberately absent: it's the
+  // default bitters and any aromatic bitters does the job.
+  // Terms are written accent-free; they're compared via foldText().
+  const SPECIFIC_INGREDIENTS = {
+    'Liqueur (Other)': [
+      ['liqueur:amaretto',   ['amaretto', 'disaronno', 'lazzaroni']],
+      ['liqueur:cassis',     ['cassis']],
+      ['liqueur:raspberry',  ['chambord', 'raspberry liqueur', 'framboise']],
+      ['liqueur:menthe',     ['creme de menthe']],
+      ['liqueur:violette',   ['creme de violette', 'violette']],
+      ['liqueur:cacao',      ['creme de cacao']],
+      ['liqueur:benedictine', ['benedictine']],
+      ['liqueur:drambuie',   ['drambuie']],
+      ['liqueur:chartreuse', ['chartreuse']],
+      ['liqueur:elderflower', ['elderflower', 'st germain', 'saint germain']],
+      ['liqueur:melon',      ['melon liqueur', 'midori']],
+      ['liqueur:anise',      ['sambuca', 'pastis', 'pernod', 'absinthe', 'ouzo', 'anisette']],
+      ['liqueur:hazelnut',   ['hazelnut', 'frangelico']],
+      ['liqueur:galliano',   ['galliano']],
+      ['liqueur:irish-cream', ['irish cream', 'baileys']],
+      ['liqueur:southern-comfort', ['southern comfort']],
+      ['liqueur:jagermeister', ['jagermeister']],
+      ['liqueur:maraschino', ['maraschino', 'luxardo']],
+      ['liqueur:peach-schnapps', ['peach schnapps']],
+      ['liqueur:fernet',     ['fernet']],
+      ['liqueur:amaro',      ['amaro', 'montenegro', 'nonino', 'averna', 'cynar', 'ramazzotti']],
+      ['liqueur:limoncello', ['limoncello']],
+    ],
+    'Bitters': [
+      ['bitters:peychaud',   ['peychaud']],
+      ['bitters:orange',     ['orange']],
+      ['bitters:chocolate',  ['chocolate', 'mole', 'cacao']],
+      ['bitters:celery',     ['celery']],
+      ['bitters:grapefruit', ['grapefruit']],
+      ['bitters:cherry',     ['cherry']],
+      ['bitters:walnut',     ['walnut']],
+    ],
+    'Fortified Wine': [
+      ['fortified:sherry',   ['sherry', 'fino', 'manzanilla', 'amontillado', 'oloroso', 'pedro ximenez']],
+      ['fortified:port',     ['port', 'porto', 'tawny', 'ruby']],
+      ['fortified:madeira',  ['madeira']],
+      ['fortified:marsala',  ['marsala']],
+      ['fortified:lillet',   ['lillet', 'cocchi americano']],
+      ['fortified:dubonnet', ['dubonnet']],
+    ],
+  };
+
+  const SPECIFIC_TERMS = {};
+  Object.values(SPECIFIC_INGREDIENTS).forEach((groups) =>
+    groups.forEach(([key, terms]) => { SPECIFIC_TERMS[key] = terms; })
+  );
+
   // ── Mixer synonym groups: raw ingredient text → canonical mixer id ─
   const MIXER_SYNONYMS = {
     'soda-water':       ['soda water', 'club soda', 'sparkling water', 'carbonated water', 'cream soda'],
@@ -304,9 +368,53 @@
       .trim();
   }
 
+  // Like normalize(), but folds accents first ("Crème" → "creme") instead
+  // of turning them into spaces. Kept separate on purpose: normalize()'s
+  // output is stored as Firebase keys (catalog keys, mixer ids,
+  // favorites), so changing it would orphan existing data.
+  function foldText(s) {
+    return String(s || '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .replace(/[’']/g, '')
+      .replace(/[^a-z0-9 ]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
   function wordMatch(haystack, keyword) {
     const escaped = keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     return new RegExp('\\b' + escaped + '\\b').test(haystack);
+  }
+
+  // Whole-word match on folded text, allowing a trailing "s" so plurals
+  // and possessives ("Peychaud's" → "peychauds") still count.
+  function termMatch(foldedHaystack, term) {
+    const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    return new RegExp('\\b' + escaped + 's?\\b').test(foldedHaystack);
+  }
+
+  // The specific-ingredient group a recipe's text names within a
+  // catch-all category, or null when it's generic (any bottle counts).
+  function specificKeyFor(category, text) {
+    const groups = SPECIFIC_INGREDIENTS[category];
+    if (!groups || !text) return null;
+    const folded = foldText(text);
+    for (const [key, terms] of groups) {
+      if (terms.some((t) => termMatch(folded, t))) return key;
+    }
+    return null;
+  }
+
+  // Name only, never the description: descriptions often mention other
+  // drinks ("great in a Kir Royale") and would cause false matches.
+  function bottleMatchesSpecific(bottle, specificKey) {
+    if (!specificKey) return true;
+    const terms = SPECIFIC_TERMS[specificKey];
+    if (!terms || !bottle) return false;
+    const folded = foldText(bottle.name);
+    return terms.some((t) => termMatch(folded, t));
   }
 
   // Signals that a mixer-classified ingredient is a decorative garnish
@@ -381,10 +489,13 @@
     Whiskey: ['Whiskey', 'Rye'],
   };
 
-  function hasCategoryStock(bottlesState, category) {
+  // specificKey (optional, from specificKeyFor) narrows a catch-all
+  // category to bottles whose name names that ingredient.
+  function hasCategoryStock(bottlesState, category, specificKey) {
     const matchCategories = CATEGORY_GROUPS[category] || [category];
     return Object.values(bottlesState || {}).some(
-      (b) => b && matchCategories.includes(b.category) && b.level !== 'empty' && !b.restricted
+      (b) => b && matchCategories.includes(b.category) && b.level !== 'empty' && !b.restricted &&
+        bottleMatchesSpecific(b, specificKey)
     );
   }
 
@@ -408,11 +519,13 @@
       }
       const categoryLabel = CATEGORIES.find((c) => c.id === req.category)?.label || req.category;
       const name = req.note || categoryLabel;
+      const specific = specificKeyFor(req.category, req.note);
       return {
         label: (req.amount ? req.amount + ' ' : '') + name,
         plainLabel: name,
-        have: hasCategoryStock(bottlesState, req.category),
+        have: hasCategoryStock(bottlesState, req.category, specific),
         category: req.category,
+        specific,
       };
     });
     const optionalStatus = recipe.optional.map((opt) => {
@@ -449,11 +562,13 @@
       const cls = classifyIngredient(ingredient);
       const label = (measure ? measure + ' ' : '') + ingredient;
       if (cls.type === 'bottle') {
+        const specific = specificKeyFor(cls.category, ingredient);
         required.push({
           label,
           plainLabel: ingredient,
-          have: hasCategoryStock(bottlesState, cls.category),
+          have: hasCategoryStock(bottlesState, cls.category, specific),
           category: cls.category,
+          specific,
         });
       } else if (isGarnish(ingredient, measure)) {
         optional.push({
@@ -530,5 +645,9 @@
     computeCustomStatus,
     computeFavoriteStatus,
     normalize,
+    SPECIFIC_INGREDIENTS,
+    foldText,
+    specificKeyFor,
+    bottleMatchesSpecific,
   };
 })();

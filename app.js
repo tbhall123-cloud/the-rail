@@ -1698,8 +1698,13 @@
     const custom = Object.entries(customRecipesState).map(([id, r]) =>
       Object.assign(R.computeCustomStatus(r.name, r.ingredients, bottlesState, mixersState, r.instructions), { id })
     );
+    // A requirement only "uses" this bottle if the category matches AND,
+    // for a specific ingredient in a catch-all category (e.g. Crème de
+    // Cassis under Liqueur (Other)), the bottle's name names it too.
     const matches = curated.concat(discovered, custom).filter((r) =>
-      r.required.some((req) => categoryMatchesBottle(req.category, bottle.category))
+      r.required.some((req) =>
+        categoryMatchesBottle(req.category, bottle.category) && R.bottleMatchesSpecific(bottle, req.specific)
+      )
     );
     matches.sort((a, b) => a.missing - b.missing || a.name.localeCompare(b.name));
     return {
